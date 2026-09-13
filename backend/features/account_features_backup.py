@@ -22,22 +22,6 @@ OBSERVATION_END = dt.datetime(2025, 5, 1)
 
 
 # ============================================================
-# SAFE RATIO HELPER
-# ============================================================
-
-def safe_ratio(numerator: Decimal, denominator: Decimal) -> Decimal:
-    """
-    Safely calculate numerator / denominator.
-
-    Returns 0 when denominator is zero.
-    """
-    if denominator is None or denominator == 0:
-        return Decimal("0")
-
-    return numerator / denominator
-
-
-# ============================================================
 # GENERATE ACCOUNT FEATURES
 # ============================================================
 
@@ -46,7 +30,6 @@ def generate_account_features():
     db = SessionLocal()
 
     try:
-
         print("Generating account-level features...")
 
         # ----------------------------------------------------
@@ -115,7 +98,7 @@ def generate_account_features():
         )
 
         # ----------------------------------------------------
-        # Initialize all accounts
+        # Initialize ALL accounts
         # ----------------------------------------------------
 
         accounts = db.query(Account).all()
@@ -131,9 +114,6 @@ def generate_account_features():
 
             account_id = transaction.from_account_id
 
-            if account_id is None:
-                continue
-
             data = features[account_id]
 
             # ------------------------------------------------
@@ -144,20 +124,23 @@ def generate_account_features():
 
             if transaction.status == "SUCCESS":
 
-                data["successful_transactions"] += 1
+                data[
+                    "successful_transactions"
+                ] += 1
 
             elif transaction.status == "FAILED":
 
-                data["failed_transactions"] += 1
+                data[
+                    "failed_transactions"
+                ] += 1
 
             # ------------------------------------------------
             # Transaction volume
             # ------------------------------------------------
 
-            amount = transaction.amount
-
-            if amount is not None:
-                data["total_volume"] += amount
+            data[
+                "total_volume"
+            ] += transaction.amount
 
             # ------------------------------------------------
             # Transaction type
@@ -167,29 +150,35 @@ def generate_account_features():
 
                 data["borrow_count"] += 1
 
-                if amount is not None:
-                    data["borrow_volume"] += amount
+                data[
+                    "borrow_volume"
+                ] += transaction.amount
 
             elif transaction.transaction_type == "REPAY":
 
                 data["repay_count"] += 1
 
-                if amount is not None:
-                    data["repay_volume"] += amount
+                data[
+                    "repay_volume"
+                ] += transaction.amount
 
             elif transaction.transaction_type == "DEPOSIT":
 
-                if amount is not None:
-                    data["deposit_volume"] += amount
+                data[
+                    "deposit_volume"
+                ] += transaction.amount
 
             elif transaction.transaction_type == "WITHDRAW":
 
-                if amount is not None:
-                    data["withdrawal_volume"] += amount
+                data[
+                    "withdrawal_volume"
+                ] += transaction.amount
 
             elif transaction.transaction_type == "LIQUIDATION":
 
-                data["historical_liquidation_count"] += 1
+                data[
+                    "historical_liquidation_count"
+                ] += 1
 
             # ------------------------------------------------
             # Counterparties
@@ -197,7 +186,9 @@ def generate_account_features():
 
             if transaction.to_account_id is not None:
 
-                data["unique_counterparties"].add(
+                data[
+                    "unique_counterparties"
+                ].add(
                     transaction.to_account_id
                 )
 
@@ -207,7 +198,9 @@ def generate_account_features():
 
             if transaction.token_id is not None:
 
-                data["unique_tokens"].add(
+                data[
+                    "unique_tokens"
+                ].add(
                     transaction.token_id
                 )
 
@@ -217,7 +210,9 @@ def generate_account_features():
 
             if transaction.protocol_id is not None:
 
-                data["unique_protocols"].add(
+                data[
+                    "unique_protocols"
+                ].add(
                     transaction.protocol_id
                 )
 
@@ -225,11 +220,11 @@ def generate_account_features():
             # Active days
             # ------------------------------------------------
 
-            if transaction.timestamp is not None:
-
-                data["active_days"].add(
-                    transaction.timestamp.date()
-                )
+            data[
+                "active_days"
+            ].add(
+                transaction.timestamp.date()
+            )
 
         # ----------------------------------------------------
         # Process DeFi events
@@ -239,9 +234,7 @@ def generate_account_features():
 
             account_id = event.account_id
 
-            if account_id is None:
-                continue
-
+            # Ensure account exists in feature dictionary
             data = features[account_id]
 
             # ------------------------------------------------
@@ -250,7 +243,9 @@ def generate_account_features():
 
             if event.token_id is not None:
 
-                data["unique_tokens"].add(
+                data[
+                    "unique_tokens"
+                ].add(
                     event.token_id
                 )
 
@@ -260,7 +255,9 @@ def generate_account_features():
 
             if event.protocol_id is not None:
 
-                data["unique_protocols"].add(
+                data[
+                    "unique_protocols"
+                ].add(
                     event.protocol_id
                 )
 
@@ -268,11 +265,11 @@ def generate_account_features():
             # Active days
             # ------------------------------------------------
 
-            if event.timestamp is not None:
-
-                data["active_days"].add(
-                    event.timestamp.date()
-                )
+            data[
+                "active_days"
+            ].add(
+                event.timestamp.date()
+            )
 
         # ----------------------------------------------------
         # Convert feature dictionaries to database rows
@@ -282,65 +279,101 @@ def generate_account_features():
 
         for account_id, data in features.items():
 
-            transaction_count = data["transaction_count"]
+            # ------------------------------------------------
+            # Basic values
+            # ------------------------------------------------
+
+            transaction_count = (
+                data["transaction_count"]
+            )
 
             successful_transactions = (
-                data["successful_transactions"]
+                data[
+                    "successful_transactions"
+                ]
             )
 
             failed_transactions = (
-                data["failed_transactions"]
+                data[
+                    "failed_transactions"
+                ]
             )
 
-            borrow_count = data["borrow_count"]
+            borrow_count = (
+                data["borrow_count"]
+            )
 
-            borrow_volume = data["borrow_volume"]
+            borrow_volume = (
+                data["borrow_volume"]
+            )
 
-            repay_count = data["repay_count"]
+            repay_volume = (
+                data["repay_volume"]
+            )
 
-            repay_volume = data["repay_volume"]
+            deposit_volume = (
+                data["deposit_volume"]
+            )
 
-            deposit_volume = data["deposit_volume"]
-
-            withdrawal_volume = data["withdrawal_volume"]
+            withdrawal_volume = (
+                data["withdrawal_volume"]
+            )
 
             liquidation_count = (
-                data["historical_liquidation_count"]
+                data[
+                    "historical_liquidation_count"
+                ]
             )
 
-            total_volume = data["total_volume"]
+            total_volume = (
+                data["total_volume"]
+            )
 
-            active_days = len(data["active_days"])
-
-            # =================================================
-            # ORIGINAL FEATURES
-            # =================================================
+            active_days = len(
+                data["active_days"]
+            )
 
             # ------------------------------------------------
             # Failed transaction ratio
             # ------------------------------------------------
 
-            failed_tx_ratio = safe_ratio(
-                Decimal(failed_transactions),
-                Decimal(transaction_count),
-            )
+            if transaction_count > 0:
+
+                failed_tx_ratio = (
+                    Decimal(
+                        failed_transactions
+                    )
+                    / Decimal(
+                        transaction_count
+                    )
+                )
+
+            else:
+
+                failed_tx_ratio = Decimal("0")
 
             # ------------------------------------------------
             # Repayment ratio
             #
             # Repayment volume relative to borrowing volume.
-            # Capped at 1.0 as in the existing implementation.
+            # Capped at 1.0.
             # ------------------------------------------------
 
-            repayment_ratio = safe_ratio(
-                repay_volume,
-                borrow_volume,
-            )
+            if borrow_volume > 0:
 
-            repayment_ratio = min(
-                repayment_ratio,
-                Decimal("1"),
-            )
+                repayment_ratio = (
+                    repay_volume
+                    / borrow_volume
+                )
+
+                repayment_ratio = min(
+                    repayment_ratio,
+                    Decimal("1")
+                )
+
+            else:
+
+                repayment_ratio = Decimal("0")
 
             # ------------------------------------------------
             # Net deposit flow
@@ -352,178 +385,116 @@ def generate_account_features():
             )
 
             # =================================================
-            # EXISTING CREDIT-RISK FEATURES
+            # ADDITIONAL DEFI CREDIT-RISK FEATURES
             # =================================================
 
             # ------------------------------------------------
-            # Borrow-to-repay ratio
-            # ------------------------------------------------
-
-            borrow_to_repay_ratio = safe_ratio(
-                borrow_volume,
-                repay_volume,
-            )
-
-            # ------------------------------------------------
-            # Withdrawal-to-deposit ratio
-            # ------------------------------------------------
-
-            withdrawal_to_deposit_ratio = safe_ratio(
-                withdrawal_volume,
-                deposit_volume,
-            )
-
-            # ------------------------------------------------
-            # Historical liquidation rate
-            # ------------------------------------------------
-
-            liquidation_rate = safe_ratio(
-                Decimal(liquidation_count),
-                Decimal(borrow_count),
-            )
-
-            # ------------------------------------------------
-            # Borrow intensity
-            # ------------------------------------------------
-
-            borrow_intensity = safe_ratio(
-                borrow_volume,
-                total_volume,
-            )
-
-            # ------------------------------------------------
-            # Transactions per active day
-            # ------------------------------------------------
-
-            transactions_per_active_day = safe_ratio(
-                Decimal(transaction_count),
-                Decimal(active_days),
-            )
-
-            # =================================================
-            # NEW FEATURE ENGINEERING V2
-            # =================================================
-
-            # ------------------------------------------------
-            # 1. Borrow volume ratio
+            # 1. Borrow-to-repay ratio
             #
-            # Proportion of total transaction volume generated
-            # by borrowing.
+            # Measures borrowed volume relative to
+            # repaid volume.
+            # ------------------------------------------------
+
+            if repay_volume > 0:
+
+                borrow_to_repay_ratio = (
+                    borrow_volume
+                    / repay_volume
+                )
+
+            else:
+
+                borrow_to_repay_ratio = Decimal("0")
+
+            # ------------------------------------------------
+            # 2. Withdrawal-to-deposit ratio
             #
-            # Similar to borrow_intensity, but retained as a
-            # candidate feature for experimentation.
+            # Measures withdrawal volume relative to
+            # deposited volume.
             # ------------------------------------------------
 
-            borrow_volume_ratio = safe_ratio(
-                borrow_volume,
-                total_volume,
-            )
+            if deposit_volume > 0:
+
+                withdrawal_to_deposit_ratio = (
+                    withdrawal_volume
+                    / deposit_volume
+                )
+
+            else:
+
+                withdrawal_to_deposit_ratio = Decimal("0")
 
             # ------------------------------------------------
-            # 2. Repay-to-borrow ratio
+            # 3. Historical liquidation rate
             #
-            # Measures how much of the borrowed volume has
-            # historically been repaid.
+            # Measures liquidations relative to
+            # borrowing activity.
+            # ------------------------------------------------
+
+            if borrow_count > 0:
+
+                liquidation_rate = (
+                    Decimal(
+                        liquidation_count
+                    )
+                    / Decimal(
+                        borrow_count
+                    )
+                )
+
+            else:
+
+                liquidation_rate = Decimal("0")
+
+            # ------------------------------------------------
+            # 4. Borrow intensity
             #
-            # Higher generally indicates stronger repayment
-            # behaviour.
+            # Measures the proportion of total transaction
+            # volume associated with borrowing.
             # ------------------------------------------------
 
-            repay_to_borrow_ratio = safe_ratio(
-                repay_volume,
-                borrow_volume,
-            )
+            if total_volume > 0:
+
+                borrow_intensity = (
+                    borrow_volume
+                    / total_volume
+                )
+
+            else:
+
+                borrow_intensity = Decimal("0")
 
             # ------------------------------------------------
-            # 3. Borrow frequency
+            # 5. Transactions per active day
             #
-            # Number of borrowing transactions per active day.
+            # Measures transaction activity intensity.
             # ------------------------------------------------
 
-            borrow_frequency = safe_ratio(
-                Decimal(borrow_count),
-                Decimal(active_days),
-            )
+            if active_days > 0:
+
+                transactions_per_active_day = (
+                    Decimal(
+                        transaction_count
+                    )
+                    / Decimal(
+                        active_days
+                    )
+                )
+
+            else:
+
+                transactions_per_active_day = Decimal("0")
 
             # ------------------------------------------------
-            # 4. Repay frequency
-            #
-            # Number of repayment transactions per active day.
+            # Create feature row
             # ------------------------------------------------
-
-            repay_frequency = safe_ratio(
-                Decimal(repay_count),
-                Decimal(active_days),
-            )
-
-            # ------------------------------------------------
-            # 5. Withdrawal pressure
-            #
-            # Withdrawal volume relative to total capital flow.
-            #
-            # This is bounded between 0 and 1 when withdrawal
-            # volume is part of total transaction volume.
-            # ------------------------------------------------
-
-            withdrawal_pressure = safe_ratio(
-                withdrawal_volume,
-                total_volume,
-            )
-
-            # ------------------------------------------------
-            # 6. Deposit retention ratio
-            #
-            # Portion of deposited volume that remains after
-            # withdrawals.
-            #
-            # Negative values are possible when withdrawals
-            # exceed deposits.
-            # ------------------------------------------------
-
-            deposit_retention_ratio = safe_ratio(
-                net_deposit_flow,
-                deposit_volume,
-            )
-
-            # ------------------------------------------------
-            # 7. Average transaction value
-            # ------------------------------------------------
-
-            average_transaction_value = safe_ratio(
-                total_volume,
-                Decimal(transaction_count),
-            )
-
-            # ------------------------------------------------
-            # 8. Average borrow value
-            # ------------------------------------------------
-
-            average_borrow_value = safe_ratio(
-                borrow_volume,
-                Decimal(borrow_count),
-            )
-
-            # ------------------------------------------------
-            # 9. Average repayment value
-            # ------------------------------------------------
-
-            average_repay_value = safe_ratio(
-                repay_volume,
-                Decimal(repay_count),
-            )
-
-            # =================================================
-            # DATABASE ROW
-            # =================================================
 
             rows.append(
                 {
-                    "account_id": account_id,
+                    "account_id":
+                        account_id,
 
-                    # ------------------------------------------------
-                    # Existing 23 features
-                    # ------------------------------------------------
-
+                    # Original features
                     "transaction_count":
                         transaction_count,
 
@@ -546,7 +517,9 @@ def generate_account_features():
                         borrow_volume,
 
                     "repay_count":
-                        repay_count,
+                        data[
+                            "repay_count"
+                        ],
 
                     "repay_volume":
                         repay_volume,
@@ -590,6 +563,7 @@ def generate_account_features():
                     "historical_liquidation_count":
                         liquidation_count,
 
+                    # New credit-risk features
                     "borrow_to_repay_ratio":
                         borrow_to_repay_ratio,
 
@@ -604,46 +578,11 @@ def generate_account_features():
 
                     "transactions_per_active_day":
                         transactions_per_active_day,
-
-                    # ------------------------------------------------
-                    # Feature Engineering V2
-                    # ------------------------------------------------
-
-                    "borrow_volume_ratio":
-                        borrow_volume_ratio,
-
-                    "repay_to_borrow_ratio":
-                        repay_to_borrow_ratio,
-
-                    "borrow_frequency":
-                        borrow_frequency,
-
-                    "repay_frequency":
-                        repay_frequency,
-
-                    "withdrawal_pressure":
-                        withdrawal_pressure,
-
-                    "deposit_retention_ratio":
-                        deposit_retention_ratio,
-
-                    "average_transaction_value":
-                        average_transaction_value,
-
-                    "average_borrow_value":
-                        average_borrow_value,
-
-                    "average_repay_value":
-                        average_repay_value,
                 }
             )
 
         print(
             f"Generated features for {len(rows)} accounts"
-        )
-
-        print(
-            "Feature Engineering V2 completed."
         )
 
         return rows
@@ -680,39 +619,17 @@ def save_features(features):
 
                     if key != "account_id":
 
-                        # ------------------------------------------------
-                        # Only update columns that exist in the current
-                        # AccountFeature database model.
-                        #
-                        # V2 engineered features are exported separately
-                        # and do not require database schema changes yet.
-                        # ------------------------------------------------
-
-                        if hasattr(existing, key):
-
-                            setattr(
-                                existing,
-                                key,
-                                value,
-                            )
+                        setattr(
+                            existing,
+                            key,
+                            value,
+                        )
 
             else:
 
-                # Only insert fields supported by the current model.
-                model_columns = {
-                    column.name
-                    for column in AccountFeature.__table__.columns
-                }
-
-                filtered_feature = {
-                    key: value
-                    for key, value in feature.items()
-                    if key in model_columns
-                }
-
                 db.add(
                     AccountFeature(
-                        **filtered_feature
+                        **feature
                     )
                 )
 

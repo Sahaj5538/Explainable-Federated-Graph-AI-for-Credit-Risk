@@ -5,13 +5,11 @@ from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
-    Boolean,
     DateTime,
     ForeignKey,
     Integer,
     Numeric,
     String,
-    Text,
 )
 
 from sqlalchemy.orm import (
@@ -20,8 +18,11 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+
+# ============================================================
+# BASE
+# ============================================================
 
 class Base(DeclarativeBase):
     """Base class for all database models."""
@@ -74,19 +75,26 @@ class Account(Base):
         back_populates="account",
     )
 
-    def __repr__(self) -> str:
-        return f"Account(id={self.account_id}, address={self.wallet_address!r})"
     features: Mapped["AccountFeature | None"] = relationship(
         back_populates="account",
         uselist=False,
         cascade="all, delete-orphan",
     )
+
     risk_label: Mapped["RiskLabel | None"] = relationship(
         "RiskLabel",
         back_populates="account",
         uselist=False,
         cascade="all, delete-orphan",
     )
+
+    def __repr__(self) -> str:
+        return (
+            f"Account("
+            f"id={self.account_id}, "
+            f"address={self.wallet_address!r})"
+        )
+
 
 # ============================================================
 # BLOCK
@@ -166,15 +174,23 @@ class Token(Base):
     )
 
     transactions: Mapped[list["Transaction"]] = relationship(
+        "Transaction",
+        foreign_keys="Transaction.token_id",
         back_populates="token",
     )
 
     defi_events: Mapped[list["DeFiEvent"]] = relationship(
+        "DeFiEvent",
+        foreign_keys="DeFiEvent.token_id",
         back_populates="token",
     )
 
     def __repr__(self) -> str:
-        return f"Token(id={self.token_id}, symbol={self.symbol!r})"
+        return (
+            f"Token("
+            f"id={self.token_id}, "
+            f"symbol={self.symbol!r})"
+        )
 
 
 # ============================================================
@@ -214,15 +230,21 @@ class Protocol(Base):
     )
 
     transactions: Mapped[list["Transaction"]] = relationship(
+        "Transaction",
         back_populates="protocol",
     )
 
     defi_events: Mapped[list["DeFiEvent"]] = relationship(
+        "DeFiEvent",
         back_populates="protocol",
     )
 
     def __repr__(self) -> str:
-        return f"Protocol(id={self.protocol_id}, name={self.name!r})"
+        return (
+            f"Protocol("
+            f"id={self.protocol_id}, "
+            f"name={self.name!r})"
+        )
 
 
 # ============================================================
@@ -318,28 +340,36 @@ class Transaction(Base):
     )
 
     block: Mapped["Block"] = relationship(
+        "Block",
         back_populates="transactions",
     )
 
     sender: Mapped["Account"] = relationship(
+        "Account",
         foreign_keys=[from_account_id],
         back_populates="transactions_sent",
     )
 
     receiver: Mapped["Account | None"] = relationship(
+        "Account",
         foreign_keys=[to_account_id],
         back_populates="transactions_received",
     )
 
     token: Mapped["Token | None"] = relationship(
+        "Token",
+        foreign_keys=[token_id],
         back_populates="transactions",
     )
 
     protocol: Mapped["Protocol | None"] = relationship(
+        "Protocol",
+        foreign_keys=[protocol_id],
         back_populates="transactions",
     )
 
     defi_events: Mapped[list["DeFiEvent"]] = relationship(
+        "DeFiEvent",
         back_populates="transaction",
         cascade="all, delete-orphan",
     )
@@ -419,18 +449,23 @@ class DeFiEvent(Base):
     )
 
     transaction: Mapped["Transaction"] = relationship(
+        "Transaction",
         back_populates="defi_events",
     )
 
     account: Mapped["Account"] = relationship(
+        "Account",
         back_populates="defi_events",
     )
 
     protocol: Mapped["Protocol"] = relationship(
+        "Protocol",
         back_populates="defi_events",
     )
 
     token: Mapped["Token | None"] = relationship(
+        "Token",
+        foreign_keys=[token_id],
         back_populates="defi_events",
     )
 
@@ -440,7 +475,15 @@ class DeFiEvent(Base):
             f"id={self.event_id}, "
             f"type={self.event_type!r})"
         )
+
+
+# ============================================================
+# ACCOUNT FEATURES
+# ============================================================
+
 class AccountFeature(Base):
+    """Aggregated behavioral features for a blockchain account."""
+
     __tablename__ = "account_features"
 
     feature_id: Mapped[int] = mapped_column(
@@ -455,6 +498,10 @@ class AccountFeature(Base):
         unique=True,
         index=True,
     )
+
+    # ========================================================
+    # Original 18 features
+    # ========================================================
 
     transaction_count: Mapped[int] = mapped_column(
         Integer,
@@ -564,10 +611,115 @@ class AccountFeature(Base):
         default=0,
     )
 
+    # ========================================================
+    # Existing 5 DeFi credit-risk features
+    # ========================================================
+
+    borrow_to_repay_ratio: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    withdrawal_to_deposit_ratio: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    liquidation_rate: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    borrow_intensity: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    transactions_per_active_day: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    # ========================================================
+    # Feature Engineering V2
+    # ========================================================
+
+    borrow_volume_ratio: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    repay_to_borrow_ratio: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    borrow_frequency: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    repay_frequency: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    withdrawal_pressure: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    deposit_retention_ratio: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+        default=0,
+    )
+
+    average_transaction_value: Mapped[Decimal] = mapped_column(
+        Numeric(30, 10),
+        nullable=False,
+        default=0,
+    )
+
+    average_borrow_value: Mapped[Decimal] = mapped_column(
+        Numeric(30, 10),
+        nullable=False,
+        default=0,
+    )
+
+    average_repay_value: Mapped[Decimal] = mapped_column(
+        Numeric(30, 10),
+        nullable=False,
+        default=0,
+    )
+
+    # ========================================================
+    # Relationship
+    # ========================================================
+
     account: Mapped["Account"] = relationship(
+        "Account",
         back_populates="features",
     )
+
+
+# ============================================================
+# RISK LABEL
+# ============================================================
+
 class RiskLabel(Base):
+    """Future-window credit-risk outcome label."""
+
     __tablename__ = "risk_labels"
 
     label_id: Mapped[int] = mapped_column(
@@ -632,4 +784,3 @@ class RiskLabel(Base):
         "Account",
         back_populates="risk_label",
     )
-    
