@@ -2,8 +2,8 @@ from pathlib import Path
 from sklearn.ensemble import HistGradientBoostingClassifier
 import pandas as pd
 import numpy as np
+import torch
 
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
@@ -16,6 +16,14 @@ from sklearn.metrics import (
     f1_score,
     recall_score,
     classification_report,
+)
+
+# Use EXACTLY the same node features and the EXACT same stratified
+# split as the GNN pipeline, so the comparison is fair.
+
+from backend.graph.build_graph import (
+    NODE_FEATURE_COLUMNS,
+    create_masks,
 )
 
 
@@ -32,6 +40,16 @@ DATA_FILE = (
     / "account_risk_dataset.csv"
 )
 
+# Feature rows must be in the SAME account order the graph uses
+# (account_features.csv order), so that the masks align.
+
+FEATURES_FILE = (
+    PROJECT_ROOT
+    / "datasets"
+    / "processed"
+    / "account_features.csv"
+)
+
 
 # ============================================================
 # Configuration
@@ -39,31 +57,7 @@ DATA_FILE = (
 
 RANDOM_STATE = 42
 
-FEATURE_COLUMNS = [
-    "transaction_count",
-    "successful_transactions",
-    "failed_transactions",
-    "failed_tx_ratio",
-    "total_volume",
-    "borrow_count",
-    "borrow_volume",
-    "repay_count",
-    "repay_volume",
-    "repayment_ratio",
-    "deposit_volume",
-    "withdrawal_volume",
-    "net_deposit_flow",
-    "unique_counterparties",
-    "unique_tokens",
-    "unique_protocols",
-    "active_days",
-    "historical_liquidation_count",
-    "borrow_to_repay_ratio",
-    "withdrawal_to_deposit_ratio",
-    "liquidation_rate",
-    "borrow_intensity",
-    "transactions_per_active_day",
-]
+FEATURE_COLUMNS = NODE_FEATURE_COLUMNS
 
 LABEL_COLUMN = "risk_label"
 
@@ -76,12 +70,14 @@ def load_data():
 
     print("Loading dataset...")
 
-    df = pd.read_csv(DATA_FILE)
+    features = pd.read_csv(FEATURES_FILE)
 
-    print(f"Accounts: {len(df)}")
+    risk = pd.read_csv(DATA_FILE)
+
+    print(f"Accounts: {len(features)}")
     print(f"Features: {len(FEATURE_COLUMNS)}")
 
-    X = df[FEATURE_COLUMNS].copy()
+    # Align labels to account_features.csv order (graph node order).
 
     label_mapping = {
         "LOW": 0,
@@ -89,12 +85,23 @@ def load_data():
         "HIGH": 2,
     }
 
-    y = df[LABEL_COLUMN].map(label_mapping)
+    label_series = (
+        risk[["account_id", LABEL_COLUMN]]
+        .drop_duplicates("account_id")
+        .set_index("account_id")[LABEL_COLUMN]
+        .map(label_mapping)
+    )
+
+    y = (
+        features["account_id"]
+        .map(label_series)
+        .astype(int)
+    )
 
     if y.isna().any():
         raise ValueError("Unknown or missing risk labels.")
 
-    y = y.astype(int)
+    X = features[FEATURE_COLUMNS].copy()
 
     print("\nOverall class distribution:")
     print(y.value_counts().sort_index())
@@ -188,28 +195,33 @@ def main():
     X, y = load_data()
 
     # --------------------------------------------------------
-    # Same stratified split strategy as graph construction
+    # EXACT same stratified split as the graph pipeline
+    # (backend.graph.build_graph.create_masks, seed 42).
+    #
+    # The previous version used sklearn train_test_split, which
+    # produced a DIFFERENT set of train/val/test accounts than
+    # the GNN used, making the comparison unfair.
     # --------------------------------------------------------
 
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X,
-        y,
-        test_size=0.30,
-        random_state=RANDOM_STATE,
-        stratify=y,
+    labels_tensor = torch.tensor(
+        y.values,
+        dtype=torch.long,
     )
 
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp,
-        y_temp,
-        test_size=0.50,
+    train_mask, val_mask, test_mask = create_masks(
+        labels_tensor,
         random_state=RANDOM_STATE,
-        stratify=y_temp,
     )
 
-    print("\nSplit sizes:")
+    X_train = X[train_mask.numpy()]
+    X_test = X[test_mask.numpy()]
+
+    y_train = y[train_mask.numpy()]
+    y_test = y[test_mask.numpy()]
+
+    print("\nSplit sizes (identical to GNN):")
     print(f"Training:   {len(X_train)}")
-    print(f"Validation:  {len(X_val)}")
+    print(f"Validation: {int(val_mask.sum())}")
     print(f"Test:        {len(X_test)}")
 
     print("\nTraining class distribution:")
@@ -306,7 +318,7 @@ def main():
             y_pred,
             target_names=["LOW", "MEDIUM", "HIGH"],
             zero_division=0
-        )   
+        )
     )
     # ========================================================
     # Train and evaluate

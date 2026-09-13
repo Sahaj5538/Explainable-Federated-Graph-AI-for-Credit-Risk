@@ -82,6 +82,7 @@ BEHAVIOR_PROFILES = {
         "repay_probability": 0.90,
         "liquidation_probability": 0.01,
         "risk_multiplier": 0.50,
+        "fail_probability": 0.01,
     },
 
     "NORMAL": {
@@ -90,6 +91,7 @@ BEHAVIOR_PROFILES = {
         "repay_probability": 0.75,
         "liquidation_probability": 0.03,
         "risk_multiplier": 0.80,
+        "fail_probability": 0.02,
     },
 
     "ACTIVE_TRADER": {
@@ -98,6 +100,7 @@ BEHAVIOR_PROFILES = {
         "repay_probability": 0.65,
         "liquidation_probability": 0.05,
         "risk_multiplier": 1.00,
+        "fail_probability": 0.04,
     },
 
     "HIGH_RISK_BORROWER": {
@@ -106,6 +109,7 @@ BEHAVIOR_PROFILES = {
         "repay_probability": 0.40,
         "liquidation_probability": 0.15,
         "risk_multiplier": 1.50,
+        "fail_probability": 0.07,
     },
 
     "HIGHLY_LEVERAGED": {
@@ -114,6 +118,7 @@ BEHAVIOR_PROFILES = {
         "repay_probability": 0.30,
         "liquidation_probability": 0.25,
         "risk_multiplier": 2.00,
+        "fail_probability": 0.12,
     },
 }
 
@@ -450,6 +455,7 @@ def generate_transactions(
     )
 
     print()
+
     print("Behavior profile distribution:")
 
     for profile, count in profile_counts.items():
@@ -641,11 +647,33 @@ def generate_transactions(
 
         # ====================================================
         # TRANSACTION STATUS
+        #
+        # Failure probability depends on the account's hidden
+        # behavior profile AND its current debt pressure.
+        #
+        # Rationale: risky / over-leveraged accounts submit
+        # transactions that revert more often (insufficient
+        # collateral, aggressive positions, gas issues).
+        #
+        # This makes failed-transaction behaviour a LEARNABLE
+        # behavioural risk signal (like liquidations), instead
+        # of uniform random noise that no model can predict.
         # ====================================================
+
+        debt_pressure = min(
+            float(outstanding_debt[account_id]) / 20000.0,
+            1.0,
+        )
+
+        fail_probability = min(
+            BEHAVIOR_PROFILES[profile]["fail_probability"]
+            * (1.0 + debt_pressure),
+            0.50,
+        )
 
         status = (
             "SUCCESS"
-            if random.random() < 0.97
+            if random.random() >= fail_probability
             else "FAILED"
         )
 
@@ -670,7 +698,8 @@ def generate_transactions(
                 if (
                     outstanding_debt[
                         account_id
-                    ] < 0
+                    ]
+                    < 0
                 ):
 
                     outstanding_debt[

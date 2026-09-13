@@ -1,6 +1,7 @@
 import os
 import copy
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -33,15 +34,30 @@ HIDDEN_CHANNELS = 32
 
 NUM_CLASSES = 3
 
-LEARNING_RATE = 0.01
+# Lower learning rate: 0.01 with unnormalized-scale inputs caused
+# the validation accuracy to swing wildly between epochs.
+
+LEARNING_RATE = 0.003
 
 WEIGHT_DECAY = 5e-4
 
-EPOCHS = 150
+EPOCHS = 300
+
+# Early stopping: stop when the selection metric has not improved
+# for PATIENCE consecutive epochs.
+
+PATIENCE = 40
 
 HEADS = 4
 
 DROPOUT = 0.25
+
+# Fix ALL randomness so results are reproducible.
+# (The stratified masks are already seeded via numpy in
+# build_graph.create_masks; this seeds model initialisation
+# and dropout.)
+
+SEED = 42
 
 
 # ============================================================
@@ -179,6 +195,12 @@ os.makedirs(
 
 def train_model(model_type):
 
+    # Reproducibility: seed model initialisation and dropout.
+
+    torch.manual_seed(SEED)
+
+    np.random.seed(SEED)
+
     print("\n")
     print("=" * 70)
 
@@ -255,10 +277,19 @@ def train_model(model_type):
     # ========================================================
     # BEST MODEL TRACKING
     # ========================================================
+    #
+    # Model selection metric: validation MACRO F1.
+    #
+    # Rationale: with an imbalanced 3-class problem, plain
+    # validation accuracy is dominated by the LOW class, so the
+    # "best accuracy" checkpoint systematically ignores MEDIUM
+    # (this is why MEDIUM recall collapsed to 0 in earlier runs).
 
-    best_val_accuracy = -1.0
+    best_val_score = -1.0
 
     best_state = None
+
+    bad_epochs = 0
 
 
     # ========================================================
@@ -324,27 +355,44 @@ def train_model(model_type):
                 .argmax(dim=1)
             )
 
-            val_accuracy = accuracy_score(
+            val_score = f1_score(
                 labels[val_mask]
                 .cpu()
                 .numpy(),
                 val_predictions
                 .cpu()
                 .numpy(),
+                average="macro",
+                zero_division=0,
             )
 
 
         # ====================================================
-        # SAVE BEST MODEL
+        # SAVE BEST MODEL + EARLY STOPPING
         # ====================================================
 
-        if val_accuracy > best_val_accuracy:
+        if val_score > best_val_score:
 
-            best_val_accuracy = val_accuracy
+            best_val_score = val_score
 
             best_state = copy.deepcopy(
                 model.state_dict()
             )
+
+            bad_epochs = 0
+
+        else:
+
+            bad_epochs += 1
+
+            if bad_epochs >= PATIENCE:
+
+                print(
+                    f"Early stopping at epoch {epoch} "
+                    f"(no improvement for {PATIENCE} epochs)"
+                )
+
+                break
 
 
         # ====================================================
@@ -356,7 +404,7 @@ def train_model(model_type):
             print(
                 f"Epoch {epoch:03d} | "
                 f"Loss: {loss.item():.4f} | "
-                f"Val Accuracy: {val_accuracy:.4f}"
+                f"Val Macro F1: {val_score:.4f}"
             )
 
 
@@ -463,8 +511,8 @@ def train_model(model_type):
     print("-" * 70)
 
     print(
-        f"Best Validation Accuracy: "
-        f"{best_val_accuracy:.4f}"
+        f"Best Validation Macro F1: "
+        f"{best_val_score:.4f}"
     )
 
     print(
@@ -570,8 +618,8 @@ def train_model(model_type):
 
         "high_f1": high_f1,
 
-        "best_val_accuracy":
-            best_val_accuracy,
+        "best_val_macro_f1":
+            best_val_score,
     }
 
 
@@ -649,26 +697,29 @@ print("=" * 90)
 
 
 # ============================================================
-# BEST MODEL BY MACRO F1
+# BEST MODEL BY VALIDATION MACRO F1
 # ============================================================
+#
+# Select the final model using the VALIDATION metric, never the
+# test metric (selecting on test performance is test-set leakage).
 
 if results:
 
     best_model = max(
         results,
-        key=lambda x: x["macro_f1"],
+        key=lambda x: x["best_val_macro_f1"],
     )
 
     print("\n")
 
     print(
-        f"Best model by Macro F1: "
+        f"Best model by Validation Macro F1: "
         f"{best_model['model']}"
     )
 
     print(
-        f"Macro F1: "
-        f"{best_model['macro_f1']:.4f}"
+        f"Validation Macro F1: "
+        f"{best_model['best_val_macro_f1']:.4f}"
     )
 
     print(

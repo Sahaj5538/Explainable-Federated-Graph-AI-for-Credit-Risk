@@ -21,6 +21,24 @@ RISK_DATASET_PATH = PROCESSED_DIR / "account_risk_dataset.csv"
 
 
 # ============================================================
+# TEMPORAL CUTOFF
+# ============================================================
+
+# Features are engineered from the observation window
+# 2025-01-01 .. 2025-05-01 (see backend/features/account_features.py).
+#
+# Transactions on/after this cutoff belong to the FUTURE OUTCOME
+# window and are used ONLY to build risk labels
+# (see backend/features/risk_labels.py).
+#
+# They must NEVER enter the graph as edges or edge features,
+# otherwise the model could read future outcomes (e.g. future
+# LIQUIDATION transactions) directly from the graph structure.
+
+OBSERVATION_END = pd.Timestamp("2025-05-01")
+
+
+# ============================================================
 # FINAL NODE FEATURES
 # ============================================================
 
@@ -614,6 +632,39 @@ def build_graph():
         risk_dataset,
     ) = load_data()
 
+    # --------------------------------------------------------
+    # Keep only observation-window transactions for edges.
+    #
+    # This enforces the temporal setup:
+    #
+    #   past behaviour -> features + graph -> prediction
+    #   future behaviour -> risk label only
+    # --------------------------------------------------------
+
+    transactions["timestamp"] = pd.to_datetime(
+        transactions["timestamp"]
+    )
+
+    n_all_transactions = len(transactions)
+
+    transactions = transactions[
+        transactions["timestamp"] < OBSERVATION_END
+    ].copy()
+
+    print(
+        f"\nTransactions total: {n_all_transactions:,}"
+    )
+
+    print(
+        f"Observation-window transactions used for edges: "
+        f"{len(transactions):,}"
+    )
+
+    print(
+        f"Future-window transactions excluded from graph: "
+        f"{n_all_transactions - len(transactions):,}"
+    )
+
     validate_features(
         account_features
     )
@@ -922,6 +973,40 @@ def build_graph():
         "account",
     ].edge_attr = (
         protocol_edge_attr_normalized.clone()
+    )
+
+    # --------------------------------------------------------
+    # Normalize account node features
+    # (training-node statistics only, to avoid test leakage)
+    #
+    # Without this, raw features such as total_volume
+    # (scale ~10^4-10^5) are mixed with ratios (scale 0-1),
+    # which destabilises training.
+    # --------------------------------------------------------
+
+    account_x = normalized_data["account"].x
+
+    train_x = account_x[train_mask]
+
+    node_mean = train_x.mean(
+        dim=0,
+        keepdim=True,
+    )
+
+    node_std = train_x.std(
+        dim=0,
+        keepdim=True,
+    )
+
+    node_std[node_std < 1e-8] = 1.0
+
+    normalized_data["account"].x = (
+        (account_x - node_mean) / node_std
+    )
+
+    print(
+        "\nAccount node features normalized "
+        "(train statistics)."
     )
 
     normalized_path = (
