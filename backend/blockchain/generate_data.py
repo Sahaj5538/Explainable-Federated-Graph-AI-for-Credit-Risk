@@ -41,7 +41,7 @@ def make_hash(value: str) -> str:
 
 
 def random_timestamp() -> dt.datetime:
-    """Generate a random timestamp inside the observation period."""
+    """Generate a random timestamp inside the dataset period."""
     total_seconds = int((END_DATE - START_DATE).total_seconds())
 
     return START_DATE + dt.timedelta(
@@ -50,8 +50,15 @@ def random_timestamp() -> dt.datetime:
 
 
 def random_amount(minimum: float, maximum: float) -> Decimal:
-    """Generate a transaction amount."""
-    return Decimal(str(round(random.uniform(minimum, maximum), 6)))
+    """Generate a synthetic transaction amount."""
+    return Decimal(
+        str(
+            round(
+                random.uniform(minimum, maximum),
+                6,
+            )
+        )
+    )
 
 
 # ============================================================
@@ -93,13 +100,13 @@ BEHAVIOR_PROFILES = {
 
 
 def choose_behavior_profile() -> str:
-    """Choose a realistic account behavior profile."""
+    """Assign one behavioral profile to an account."""
 
     profiles = list(BEHAVIOR_PROFILES.keys())
 
     weights = [
-        BEHAVIOR_PROFILES[p]["weight"]
-        for p in profiles
+        BEHAVIOR_PROFILES[profile]["weight"]
+        for profile in profiles
     ]
 
     return random.choices(
@@ -124,9 +131,11 @@ def generate_accounts(db) -> list[Account]:
         account = Account(
             wallet_address=wallet_address,
             chain_id=CHAIN_ID,
-            created_at=START_DATE
-            + dt.timedelta(
-                days=random.randint(0, 30)
+            created_at=(
+                START_DATE
+                + dt.timedelta(
+                    days=random.randint(0, 30)
+                )
             ),
         )
 
@@ -151,7 +160,8 @@ def generate_blocks(db) -> list[Block]:
     current_time = START_DATE
     block_number = 10000000
 
-    # Synthetic blockchain: one block every 5 minutes
+    # Synthetic blockchain:
+    # one block every 5 minutes.
     while current_time <= END_DATE:
 
         block = Block(
@@ -192,7 +202,10 @@ def generate_tokens(db) -> list[Token]:
 
     tokens = []
 
-    for i, (symbol, decimals) in enumerate(token_data, start=1):
+    for i, (symbol, decimals) in enumerate(
+        token_data,
+        start=1,
+    ):
 
         token = Token(
             token_address="0x" + f"{i + 1000:040x}",
@@ -259,25 +272,30 @@ def choose_transaction_type(
 
     settings = BEHAVIOR_PROFILES[profile]
 
-    # If the account currently has debt, it can repay
-    # or potentially be liquidated.
+    # --------------------------------------------------------
+    # If account has outstanding debt:
+    # it may be liquidated or repay the debt.
+    # --------------------------------------------------------
+
     if outstanding_debt > 0:
 
-        liquidation_roll = random.random()
-
-        if liquidation_roll < settings["liquidation_probability"]:
+        if random.random() < settings["liquidation_probability"]:
             return "LIQUIDATION"
 
-        repay_roll = random.random()
-
-        if repay_roll < settings["repay_probability"]:
+        if random.random() < settings["repay_probability"]:
             return "REPAY"
 
-    # Otherwise, decide whether to borrow.
+    # --------------------------------------------------------
+    # Account may borrow.
+    # --------------------------------------------------------
+
     if random.random() < settings["borrow_probability"]:
         return "BORROW"
 
-    # Normal activity
+    # --------------------------------------------------------
+    # Normal blockchain activity.
+    # --------------------------------------------------------
+
     roll = random.random()
 
     if roll < 0.35:
@@ -306,25 +324,59 @@ def generate_transactions(
 
     transactions = []
 
-    # Assign every account a behavioral profile
+    # --------------------------------------------------------
+    # Assign each account a behavior profile.
+    # --------------------------------------------------------
+
     account_profiles = {
         account.account_id: choose_behavior_profile()
         for account in accounts
     }
 
-    # Track outstanding debt for every account
+    # --------------------------------------------------------
+    # Track outstanding debt for every account.
+    # --------------------------------------------------------
+
     outstanding_debt = {
         account.account_id: Decimal("0")
         for account in accounts
     }
 
-    for i in range(NUM_TRANSACTIONS):
+    # ========================================================
+    # IMPORTANT TEMPORAL CHANGE
+    # ========================================================
+    #
+    # Generate all timestamps first.
+    # Then sort them chronologically.
+    #
+    # This means transaction generation now follows time.
+    # ========================================================
+
+    timestamps = [
+        random_timestamp()
+        for _ in range(NUM_TRANSACTIONS)
+    ]
+
+    timestamps.sort()
+
+    # --------------------------------------------------------
+    # Generate transactions in chronological order.
+    # --------------------------------------------------------
+
+    for i, timestamp in enumerate(timestamps):
 
         sender = random.choice(accounts)
 
         account_id = sender.account_id
 
         profile = account_profiles[account_id]
+
+        # ----------------------------------------------------
+        # Decide transaction type using the CURRENT debt.
+        # Since timestamps are chronological, the debt state
+        # now represents the account's state at this point
+        # in time.
+        # ----------------------------------------------------
 
         tx_type = choose_transaction_type(
             profile,
@@ -337,14 +389,16 @@ def generate_transactions(
             "TRANSFER",
             "SWAP",
         }:
+
             receiver = random.choice(accounts)
 
             while receiver.account_id == sender.account_id:
                 receiver = random.choice(accounts)
 
-        timestamp = random_timestamp()
+        # ----------------------------------------------------
+        # Find blockchain block corresponding to timestamp.
+        # ----------------------------------------------------
 
-        # Calculate corresponding synthetic block
         elapsed_seconds = int(
             (timestamp - START_DATE).total_seconds()
         )
@@ -352,10 +406,21 @@ def generate_transactions(
         block_index = elapsed_seconds // (5 * 60)
 
         block = blocks[
-            min(block_index, len(blocks) - 1)
+            min(
+                block_index,
+                len(blocks) - 1,
+            )
         ]
 
+        # ----------------------------------------------------
+        # Select token.
+        # ----------------------------------------------------
+
         token = random.choice(tokens)
+
+        # ----------------------------------------------------
+        # Select protocol for DeFi-related transactions.
+        # ----------------------------------------------------
 
         protocol = None
 
@@ -367,44 +432,46 @@ def generate_transactions(
             "WITHDRAW",
             "SWAP",
         }:
+
             protocol = random.choice(protocols)
 
-        # ----------------------------------------------------
-        # Generate transaction amount
-        # ----------------------------------------------------
+        # ====================================================
+        # GENERATE AMOUNT
+        # ====================================================
 
         if tx_type == "REPAY":
 
-            # Repayment cannot exceed outstanding debt
             max_repayment = min(
                 outstanding_debt[account_id],
                 Decimal("10000"),
             )
 
-            amount = (
-                Decimal("0")
-                if max_repayment <= 0
-                else Decimal(
+            if max_repayment <= 0:
+
+                amount = Decimal("0")
+
+            else:
+
+                minimum_repayment = (
+                    max_repayment
+                    * Decimal("0.10")
+                )
+
+                amount = Decimal(
                     str(
                         round(
                             random.uniform(
-                                float(max_repayment * Decimal("0.10")),
+                                float(minimum_repayment),
                                 float(max_repayment),
                             ),
                             6,
                         )
                     )
                 )
-            )
-
-            outstanding_debt[account_id] -= amount
 
         elif tx_type == "LIQUIDATION":
 
-            # Liquidation clears the remaining debt
             amount = outstanding_debt[account_id]
-
-            outstanding_debt[account_id] = Decimal("0")
 
         elif tx_type == "BORROW":
 
@@ -413,14 +480,54 @@ def generate_transactions(
                 10000,
             )
 
-            outstanding_debt[account_id] += amount
-
         else:
 
             amount = random_amount(
                 10,
                 10000,
             )
+
+        # ====================================================
+        # DETERMINE TRANSACTION STATUS
+        # ====================================================
+
+        status = (
+            "SUCCESS"
+            if random.random() < 0.97
+            else "FAILED"
+        )
+
+        # ====================================================
+        # IMPORTANT TEMPORAL / STATE CHANGE
+        # ====================================================
+        #
+        # Debt is updated ONLY when the transaction succeeds.
+        #
+        # A failed transaction does not change the account's
+        # financial state.
+        # ====================================================
+
+        if status == "SUCCESS":
+
+            if tx_type == "BORROW":
+
+                outstanding_debt[account_id] += amount
+
+            elif tx_type == "REPAY":
+
+                outstanding_debt[account_id] -= amount
+
+                # Numerical safety.
+                if outstanding_debt[account_id] < 0:
+                    outstanding_debt[account_id] = Decimal("0")
+
+            elif tx_type == "LIQUIDATION":
+
+                outstanding_debt[account_id] = Decimal("0")
+
+        # ----------------------------------------------------
+        # Create database transaction.
+        # ----------------------------------------------------
 
         transaction = Transaction(
             transaction_hash="0x" + make_hash(
@@ -468,11 +575,7 @@ def generate_transactions(
                 )
             ),
 
-            status=(
-                "SUCCESS"
-                if random.random() < 0.97
-                else "FAILED"
-            ),
+            status=status,
 
             chain_id=CHAIN_ID,
         )
@@ -501,15 +604,20 @@ def generate_transactions(
 # GENERATE DEFI EVENTS
 # ============================================================
 
-def generate_defi_events(db, transaction_data):
+def generate_defi_events(
+    db,
+    transaction_data,
+):
 
     event_count = 0
 
     for transaction, profile, protocol, token in transaction_data:
 
+        # No protocol → no DeFi event.
         if protocol is None:
             continue
 
+        # Only DeFi-related transaction types create events.
         if transaction.transaction_type not in {
             "BORROW",
             "REPAY",
@@ -519,10 +627,23 @@ def generate_defi_events(db, transaction_data):
         }:
             continue
 
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Failed DeFi transactions should not be represented
+        # as successful financial events.
+        # ----------------------------------------------------
+
+        if transaction.status != "SUCCESS":
+            continue
+
         event_type = transaction.transaction_type
 
         collateral_amount = None
         debt_amount = None
+
+        # ----------------------------------------------------
+        # BORROW
+        # ----------------------------------------------------
 
         if event_type == "BORROW":
 
@@ -540,9 +661,17 @@ def generate_defi_events(db, transaction_data):
                 )
             )
 
+        # ----------------------------------------------------
+        # REPAY
+        # ----------------------------------------------------
+
         elif event_type == "REPAY":
 
             debt_amount = transaction.amount
+
+        # ----------------------------------------------------
+        # LIQUIDATION
+        # ----------------------------------------------------
 
         elif event_type == "LIQUIDATION":
 
@@ -553,16 +682,24 @@ def generate_defi_events(db, transaction_data):
                 * Decimal(
                     str(
                         random.uniform(
-                        0.8,
-                        1.2,
+                            0.8,
+                            1.2,
+                        )
                     )
                 )
             )
-        )
+
+        # ----------------------------------------------------
+        # DEPOSIT
+        # ----------------------------------------------------
 
         elif event_type == "DEPOSIT":
 
             collateral_amount = transaction.amount
+
+        # ----------------------------------------------------
+        # Create DeFi event.
+        # ----------------------------------------------------
 
         event = DeFiEvent(
             transaction_id=transaction.transaction_id,
@@ -605,7 +742,9 @@ def main():
 
     try:
 
-        print("Starting synthetic DeFi dataset generation...")
+        print(
+            "Starting synthetic DeFi dataset generation..."
+        )
 
         accounts = generate_accounts(db)
 
