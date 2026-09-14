@@ -7,13 +7,13 @@ from torch_geometric.nn import (
     GATConv,
     TransformerConv,
 )
-
+from backend.graph.build_graph import NODE_FEATURE_COLUMNS
 
 # ============================================================
 # PROJECT GRAPH DIMENSIONS
 # ============================================================
 
-ACCOUNT_FEATURES = 11
+ACCOUNT_FEATURES =len(NODE_FEATURE_COLUMNS)
 PROTOCOL_FEATURES = 1
 
 ACCOUNT_EDGE_FEATURES = 10

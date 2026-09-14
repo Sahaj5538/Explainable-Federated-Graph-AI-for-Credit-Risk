@@ -123,6 +123,40 @@ BEHAVIOR_PROFILES = {
 }
 
 
+# ============================================================
+# INTERACTION HOMOPHILY
+#
+# Real blockchain interaction networks are NOT random:
+#
+#   1. Wallets mostly transact inside their own cluster
+#      (OTC desks, copy-traders, farming groups).
+#   2. Users concentrate on preferred DeFi venues
+#      (traders on the DEX, leveraged users on specific
+#      money markets).
+#
+# The settings below control how strongly the synthetic
+# network reproduces this community structure, so that
+# graph connectivity carries genuine behavioral signal.
+# ============================================================
+
+ACCOUNT_HOMOPHILY_PROBABILITY = 0.60
+
+PROTOCOL_PREFERENCE_PROBABILITY = 0.70
+
+PREFERRED_PROTOCOLS = {
+
+    "CONSERVATIVE": "AaveLike",
+
+    "NORMAL": "AaveLike",
+
+    "ACTIVE_TRADER": "UniswapLike",
+
+    "HIGH_RISK_BORROWER": "CompoundLike",
+
+    "HIGHLY_LEVERAGED": "MakerLike",
+}
+
+
 def choose_behavior_profile() -> str:
     """Assign one hidden behavioral profile to an account."""
 
@@ -466,6 +500,30 @@ def generate_transactions(
     print()
 
     # --------------------------------------------------------
+    # Group accounts by hidden behavior profile.
+    #
+    # Used for counterparty homophily: wallets tend to
+    # transact inside their own behavioral cluster.
+    # --------------------------------------------------------
+
+    accounts_by_profile = {}
+
+    for account in accounts:
+        accounts_by_profile.setdefault(
+            account_profiles[account.account_id],
+            [],
+        ).append(account)
+
+    # --------------------------------------------------------
+    # Lookup protocols by name (for protocol preference).
+    # --------------------------------------------------------
+
+    protocol_by_name = {
+        protocol.name: protocol
+        for protocol in protocols
+    }
+
+    # --------------------------------------------------------
     # Track outstanding debt for every account.
     # --------------------------------------------------------
 
@@ -522,11 +580,58 @@ def generate_transactions(
             "SWAP",
         }:
 
+            # ------------------------------------------------
+            # Counterparty homophily.
+            #
+            # Real wallets mostly transact inside their own
+            # community / cluster (OTC desks, copy-traders,
+            # farming groups).
+            #
+            # With probability ACCOUNT_HOMOPHILY_PROBABILITY
+            # the counterparty is drawn from the SAME hidden
+            # behavior profile as the sender; otherwise it is
+            # a uniformly random account.
+            #
+            # This makes the account-account graph structure
+            # informative: connected wallets tend to share
+            # risk behaviour.
+            # ------------------------------------------------
+
+            if (
+                random.random()
+                < ACCOUNT_HOMOPHILY_PROBABILITY
+            ):
+
+                candidates = accounts_by_profile.get(
+                    profile,
+                    accounts,
+                )
+
+            else:
+
+                candidates = accounts
+
             receiver = random.choice(
-                accounts
+                candidates
             )
 
+            attempts = 0
+
             while (
+                receiver.account_id
+                == sender.account_id
+                and attempts < 10
+            ):
+
+                receiver = random.choice(
+                    candidates
+                )
+
+                attempts += 1
+
+            # Fallback for very small clusters.
+
+            if (
                 receiver.account_id
                 == sender.account_id
             ):
@@ -534,6 +639,15 @@ def generate_transactions(
                 receiver = random.choice(
                     accounts
                 )
+
+                while (
+                    receiver.account_id
+                    == sender.account_id
+                ):
+
+                    receiver = random.choice(
+                        accounts
+                    )
 
         # ----------------------------------------------------
         # Find blockchain block corresponding to timestamp.
@@ -581,9 +695,34 @@ def generate_transactions(
             "SWAP",
         }:
 
-            protocol = random.choice(
-                protocols
-            )
+            # ------------------------------------------------
+            # Protocol preference.
+            #
+            # Real DeFi users concentrate on preferred venues
+            # (yield farmers, DEX traders, leveraged loops).
+            #
+            # With probability PROTOCOL_PREFERENCE_PROBABILITY
+            # the account uses its profile's preferred
+            # protocol; otherwise a uniformly random one.
+            #
+            # This makes account-protocol edges informative:
+            # each venue aggregates a specific user segment.
+            # ------------------------------------------------
+
+            if (
+                random.random()
+                < PROTOCOL_PREFERENCE_PROBABILITY
+            ):
+
+                protocol = protocol_by_name[
+                    PREFERRED_PROTOCOLS[profile]
+                ]
+
+            else:
+
+                protocol = random.choice(
+                    protocols
+                )
 
         # ====================================================
         # GENERATE AMOUNT

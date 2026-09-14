@@ -54,6 +54,8 @@ NODE_FEATURE_COLUMNS = [
     "repayment_ratio",
     "repay_count",
     "total_volume",
+    "failed_tx_ratio",
+    "failed_transactions",
 ]
 
 
