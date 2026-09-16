@@ -24,3 +24,6 @@ build/
 dist/
 *.egg-info/
 datasets/backup_before_fixes/
+node_modules
+dist
+npm-debug.log

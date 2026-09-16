@@ -1,0 +1,146 @@
+/* Dark fintech theme - no external UI libraries. */
+
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --high: #f85149;
+  --low: #3fb950;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+
+.header h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: 0.3px; }
+.header p { margin: 0; font-size: 14px; }
+
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.mono { font-family: ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace; font-size: 13px; }
+.accent { color: var(--accent); font-weight: 600; }
+.text-high { color: var(--high); font-weight: 600; }
+.text-low { color: var(--low); font-weight: 600; }
+
+/* Tabs */
+.tabs { display: flex; gap: 8px; margin: 22px 0 18px; border-bottom: 1px solid var(--border); }
+.tab {
+  background: none; border: none; color: var(--muted);
+  padding: 10px 14px; font-size: 14px; cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.tab:hover { color: var(--text); }
+
+/* Layout helpers */
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+/* Cards */
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px;
+}
+.card-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
+.card-rows { display: flex; flex-direction: column; gap: 8px; }
+.card-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.card-label { color: var(--muted); }
+
+/* Buttons / inputs */
+button {
+  background: #21262d; color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary { background: #1f6feb; border-color: #1f6feb; }
+button.primary:disabled { opacity: 0.6; }
+button.ghost { background: none; border: none; color: var(--muted); font-size: 14px; }
+button.ghost:hover { color: var(--text); }
+
+input, select {
+  background: #0d1117; color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 12px; font-size: 14px; min-width: 220px;
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+form { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* Table */
+table.accounts { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.accounts th, table.accounts td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+table.accounts th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+table.accounts tbody tr { cursor: pointer; }
+table.accounts tbody tr:hover { background: #1c2129; }
+
+table.features { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.features th, table.features td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+table.features th { color: var(--muted); font-weight: 600; }
+
+/* Badges + chips */
+.badge { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge.high { background: rgba(248, 81, 73, 0.15); color: var(--high); }
+.badge.low { background: rgba(63, 185, 80, 0.15); color: var(--low); }
+
+.chip {
+  display: inline-block; background: #21262d; border: 1px solid var(--border);
+  border-radius: 999px; padding: 2px 10px; font-size: 12px; margin: 2px 4px 2px 0;
+}
+.chips { margin-top: 8px; }
+
+/* Bars (importance / reasons) */
+.bars { display: flex; flex-direction: column; gap: 7px; }
+.bar-row { display: grid; grid-template-columns: 220px 1fr 74px; align-items: center; gap: 10px; }
+.bar-label { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { background: #0d1117; border-radius: 4px; height: 14px; overflow: hidden; }
+.bar-fill { background: linear-gradient(90deg, #1f6feb, #58a6ff); height: 100%; border-radius: 4px; }
+.bar-value { text-align: right; }
+
+/* SHAP diverging chart */
+.shap-meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; margin-bottom: 14px; }
+.shap-chart { display: flex; flex-direction: column; gap: 6px; }
+.shap-row { display: grid; grid-template-columns: 220px 1fr 74px; align-items: center; gap: 10px; }
+.shap-track { display: flex; height: 14px; }
+.shap-half { flex: 1; display: flex; }
+.shap-half.left { justify-content: flex-end; }
+.shap-half.right { justify-content: flex-start; }
+.shap-fill { height: 100%; border-radius: 3px; }
+.shap-fill.pos { background: var(--high); }
+.shap-fill.neg { background: #4c6ef5; }
+.shap-track::before { content: none; }
+
+.legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.dot.pos { background: var(--high); margin-left: 12px; }
+.dot.neg { background: #4c6ef5; }
+
+/* Detail header */
+.detail-head { display: flex; align-items: center; gap: 20px; justify-content: space-between; flex-wrap: wrap; }
+.detail-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.prob-box { text-align: center; padding: 10px 22px; border: 1px solid var(--border); border-radius: 10px; background: #0d1117; }
+.prob-number { font-size: 28px; font-weight: 700; }
+
+/* Pagination */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; font-size: 14px; color: var(--muted); }
+
+/* States */
+.loading { color: var(--muted); padding: 14px 0; }
+.error { background: rgba(248, 81, 73, 0.12); border: 1px solid var(--high); color: var(--high); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+
+.footer { margin-top: 40px; font-size: 12.5px; text-align: center; border-top: 1px solid var(--border); padding-top: 16px; }
+
+@media (max-width: 760px) {
+  .bar-row, .shap-row { grid-template-columns: 140px 1fr 64px; }
+  .prob-number { font-size: 22px; }
+}
