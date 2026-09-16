@@ -23,3 +23,4 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+datasets/backup_before_fixes/
