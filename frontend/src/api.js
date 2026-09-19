@@ -1,5 +1,5 @@
-// Thin API client - all calls are same-origin (production: served by
-// FastAPI; development: proxied to http://127.0.0.1:8000 by Vite).
+// API Client for VERTEX — Graph Credit Intelligence
+// Same-origin calls served directly by FastAPI or proxied by Vite in dev mode.
 
 async function getJson(path) {
   const response = await fetch(path)
@@ -24,16 +24,33 @@ async function postJson(path, body) {
 }
 
 export const api = {
+  health: () => getJson('/api/health'),
   stats: () => getJson('/api/stats'),
-  accounts: (params) =>
+  importance: () => getJson('/api/importance'),
+  accounts: (params = {}) =>
     getJson(`/api/accounts?${new URLSearchParams(params).toString()}`),
   account: (accountId) => getJson(`/api/accounts/${accountId}`),
   shap: (accountId) => getJson(`/api/shap/${accountId}`),
   predict: (accountId) => postJson('/api/predict', { account_id: accountId }),
 }
 
-export const pct = (value, digits = 1) =>
-  `${(100 * (value || 0)).toFixed(digits)}%`
+export const pct = (value, digits = 1) => {
+  if (value === null || value === undefined || isNaN(value)) return '0.0%'
+  return `${(100 * value).toFixed(digits)}%`
+}
 
-export const signed = (value, digits = 3) =>
-  `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`
+export const signed = (value, digits = 3) => {
+  if (value === null || value === undefined || isNaN(value)) return '0.000'
+  return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}`
+}
+
+export const shortenAddress = (addr) => {
+  if (!addr || typeof addr !== 'string') return '-'
+  if (addr.length < 12) return addr
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+}
+
+export const formatNumber = (val) => {
+  if (val === null || val === undefined || isNaN(val)) return '0'
+  return new Intl.NumberFormat().format(val)
+}

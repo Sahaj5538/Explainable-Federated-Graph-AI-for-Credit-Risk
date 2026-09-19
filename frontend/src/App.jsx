@@ -1,69 +1,93 @@
 import React, { useState } from 'react'
-import Overview from './components/Overview.jsx'
-import AccountsTable from './components/AccountsTable.jsx'
-import AccountDetail from './components/AccountDetail.jsx'
-import PredictForm from './components/PredictForm.jsx'
+import SidebarNav from './components/SidebarNav.jsx'
+import TopHeader from './components/TopHeader.jsx'
+import IntroAnimation from './components/IntroAnimation.jsx'
+import DetailModal from './components/DetailModal.jsx'
 
-// App shell: header + tab navigation + footer. The Accounts tab
-// shows the full explanation inline under the table when a row is
-// selected.
-
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'accounts', label: 'Accounts & explanations' },
-  { id: 'predict', label: 'Predict' },
-]
+// Views
+import DashboardView from './views/DashboardView.jsx'
+import NetworkExplorerView from './views/NetworkExplorerView.jsx'
+import WalletIntelligenceView from './views/WalletIntelligenceView.jsx'
+import RiskAssessmentView from './views/RiskAssessmentView.jsx'
+import ExplainabilityView from './views/ExplainabilityView.jsx'
+import ModelComparisonView from './views/ModelComparisonView.jsx'
+import TrainingView from './views/TrainingView.jsx'
+import FederatedLearningView from './views/FederatedLearningView.jsx'
+import PrivacyCenterView from './views/PrivacyCenterView.jsx'
+import SystemArchitectureView from './views/SystemArchitectureView.jsx'
+import SystemStatusView from './views/SystemStatusView.jsx'
 
 export default function App() {
-  const [tab, setTab] = useState('overview')
-  const [selectedAccountId, setSelectedAccountId] = useState(null)
+  const [showIntro, setShowIntro] = useState(true)
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [inspectedAccountId, setInspectedAccountId] = useState(null)
 
   return (
-    <div className="app">
-      <header className="header">
-        <div>
-          <h1>DeFi Credit Risk</h1>
-          <p className="muted">
-            Explainable, privacy-preserving Graph AI · GraphSAGE ·
-            federated learning with secure aggregation · SHAP
-          </p>
-        </div>
-      </header>
+    <div className="app-shell">
+      {/* 1. Cinematic Intro Overlay */}
+      {showIntro && (
+        <IntroAnimation onComplete={() => setShowIntro(false)} />
+      )}
 
-      <nav className="tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={tab === t.id ? 'tab active' : 'tab'}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      {/* 2. Left Navigation Sidebar */}
+      <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="content">
-        {tab === 'overview' && <Overview />}
+      {/* 3. Main Workspace */}
+      <div className="main-wrapper">
+        <TopHeader activeTab={activeTab} />
 
-        {tab === 'accounts' && (
-          <div className="stack">
-            <AccountsTable onSelect={setSelectedAccountId} />
-            {selectedAccountId !== null && (
-              <AccountDetail
-                accountId={selectedAccountId}
-                onClose={() => setSelectedAccountId(null)}
-              />
-            )}
-          </div>
-        )}
+        <main className="main-content">
+          {activeTab === 'dashboard' && (
+            <DashboardView
+              onNavigateTab={setActiveTab}
+              onSelectAccount={setInspectedAccountId}
+            />
+          )}
 
-        {tab === 'predict' && <PredictForm />}
-      </main>
+          {activeTab === 'network' && (
+            <NetworkExplorerView
+              onSelectAccount={setInspectedAccountId}
+              onNavigateTab={setActiveTab}
+            />
+          )}
 
-      <footer className="footer muted">
-        Features computed from the observation window only (no outcome
-        leakage) · labels from the future window · seeded pipeline
-      </footer>
+          {activeTab === 'wallets' && (
+            <WalletIntelligenceView
+              onSelectAccount={setInspectedAccountId}
+            />
+          )}
+
+          {activeTab === 'risk' && (
+            <RiskAssessmentView
+              onSelectAccount={setInspectedAccountId}
+            />
+          )}
+
+          {activeTab === 'explainability' && (
+            <ExplainabilityView
+              onSelectAccount={setInspectedAccountId}
+            />
+          )}
+
+          {activeTab === 'models' && <ModelComparisonView />}
+
+          {activeTab === 'training' && <TrainingView />}
+
+          {activeTab === 'federation' && <FederatedLearningView />}
+
+          {activeTab === 'privacy' && <PrivacyCenterView />}
+
+          {activeTab === 'architecture' && <SystemArchitectureView />}
+
+          {activeTab === 'status' && <SystemStatusView />}
+        </main>
+      </div>
+
+      {/* 4. Account Inspection Slide-Over / Modal */}
+      <DetailModal
+        accountId={inspectedAccountId}
+        onClose={() => setInspectedAccountId(null)}
+      />
     </div>
   )
 }
