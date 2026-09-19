@@ -234,6 +234,8 @@ def _startup():
             "x_dict": x_dict,
             "edge_index_dict": edge_index_dict,
             "edge_attr_dict": edge_attr_dict,
+            "train_mask": train_mask,
+            "test_mask": test_mask,
             "model": model,
             "checkpoint": checkpoint,
             "predictions": predictions,

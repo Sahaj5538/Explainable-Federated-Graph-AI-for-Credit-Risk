@@ -489,7 +489,6 @@ def generate_transactions(
     )
 
     print()
-
     print("Behavior profile distribution:")
 
     for profile, count in profile_counts.items():
@@ -837,8 +836,7 @@ def generate_transactions(
                 if (
                     outstanding_debt[
                         account_id
-                    ]
-                    < 0
+                    ] < 0
                 ):
 
                     outstanding_debt[

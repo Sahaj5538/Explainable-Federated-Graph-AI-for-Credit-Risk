@@ -1,0 +1,14 @@
+feature,importance_drop,rank
+failed_tx_ratio,0.0639969370719854,1
+repayment_ratio,0.05230446621989859,2
+historical_liquidation_count,0.031027070631969633,3
+total_volume,0.027302225534262203,4
+borrow_intensity,0.027266386349470206,5
+unique_counterparties,0.02551898154767429,6
+borrow_frequency,0.01924768554116807,7
+borrow_volume,0.018199037994493295,8
+repay_count,0.017055953978174387,9
+borrow_to_repay_ratio,0.015007046482985564,10
+failed_transactions,0.0036573921914966334,11
+deposit_volume,-0.0034864737232677134,12
+liquidation_rate,-0.005818266178101772,13

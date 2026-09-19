@@ -7,13 +7,22 @@ from torch_geometric.nn import (
     GATConv,
     TransformerConv,
 )
+
 from backend.graph.build_graph import NODE_FEATURE_COLUMNS
+
 
 # ============================================================
 # PROJECT GRAPH DIMENSIONS
 # ============================================================
 
-ACCOUNT_FEATURES =len(NODE_FEATURE_COLUMNS)
+# Number of account node features.
+#
+# Derived from the single feature definition used across the
+# whole pipeline (build_graph.NODE_FEATURE_COLUMNS), so the
+# model input layer always matches the graph exactly.
+
+ACCOUNT_FEATURES = len(NODE_FEATURE_COLUMNS)
+
 PROTOCOL_FEATURES = 1
 
 ACCOUNT_EDGE_FEATURES = 10

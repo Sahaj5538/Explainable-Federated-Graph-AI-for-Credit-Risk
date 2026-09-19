@@ -489,7 +489,7 @@ def train_gnn(
 def train_tabular_baselines(account_features, labels, train_mask, test_mask):
 
     print("\n" + "=" * 70)
-    print("TABULAR BASELINES (same node features, same split)")
+    print("TABULAR BASELINES (same 11 features, same split)")
     print("=" * 70)
 
     X = (
@@ -671,4 +671,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

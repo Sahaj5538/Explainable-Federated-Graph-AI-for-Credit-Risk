@@ -1,0 +1,149 @@
+[
+  {
+    "account_index": 623,
+    "account_id": 624,
+    "prediction": 1,
+    "prediction_label": "HIGH RISK",
+    "probability": 0.9944275617599487,
+    "reasons": [
+      {
+        "feature": "historical_liquidation_count",
+        "value": 5.0,
+        "z_vs_low_risk": 7.335792867703592,
+        "importance_weight": 0.10322290910020705,
+        "reason_score": 0.7572218803609151,
+        "gradient_attribution": -0.30523836612701416
+      },
+      {
+        "feature": "failed_tx_ratio",
+        "value": 0.125,
+        "z_vs_low_risk": 2.34087343930114,
+        "importance_weight": 0.2129092396904073,
+        "reason_score": 0.4983935841730745,
+        "gradient_attribution": 0.03795905038714409
+      },
+      {
+        "feature": "borrow_volume",
+        "value": 27392.214683,
+        "z_vs_low_risk": 3.593153717468515,
+        "importance_weight": 0.06054576234087565,
+        "reason_score": 0.21755023103208254,
+        "gradient_attribution": -0.08987706154584885
+      },
+      {
+        "feature": "borrow_frequency",
+        "value": 0.333333,
+        "z_vs_low_risk": 2.8005282093475605,
+        "importance_weight": 0.0640344723023321,
+        "reason_score": 0.17933034605336606,
+        "gradient_attribution": 0.20138908922672272
+      },
+      {
+        "feature": "repayment_ratio",
+        "value": 0.119298,
+        "z_vs_low_risk": -0.9537814652018934,
+        "importance_weight": 0.17400995492589005,
+        "reason_score": 0.16596746976893084,
+        "gradient_attribution": -0.03148370608687401
+      }
+    ]
+  },
+  {
+    "account_index": 714,
+    "account_id": 715,
+    "prediction": 1,
+    "prediction_label": "HIGH RISK",
+    "probability": 0.994038462638855,
+    "reasons": [
+      {
+        "feature": "failed_tx_ratio",
+        "value": 0.181818,
+        "z_vs_low_risk": 3.6311691941738324,
+        "importance_weight": 0.2129092396904073,
+        "reason_score": 0.7731094723187796,
+        "gradient_attribution": 0.061663173139095306
+      },
+      {
+        "feature": "historical_liquidation_count",
+        "value": 2.0,
+        "z_vs_low_risk": 2.71347982776546,
+        "importance_weight": 0.10322290910020705,
+        "reason_score": 0.28009328160667957,
+        "gradient_attribution": 0.04393462464213371
+      },
+      {
+        "feature": "borrow_frequency",
+        "value": 0.272727,
+        "z_vs_low_risk": 2.105792717527416,
+        "importance_weight": 0.0640344723023321,
+        "reason_score": 0.13484332544496194,
+        "gradient_attribution": 0.0692991316318512
+      },
+      {
+        "feature": "borrow_intensity",
+        "value": 0.295157,
+        "z_vs_low_risk": 1.3136881776847582,
+        "importance_weight": 0.09071161609251222,
+        "reason_score": 0.11916677763941176,
+        "gradient_attribution": -0.10124998539686203
+      },
+      {
+        "feature": "repayment_ratio",
+        "value": 0.277361,
+        "z_vs_low_risk": -0.6034717934584728,
+        "importance_weight": 0.17400995492589005,
+        "reason_score": 0.10501009957875489,
+        "gradient_attribution": -0.035653434693813324
+      }
+    ]
+  },
+  {
+    "account_index": 498,
+    "account_id": 498,
+    "prediction": 1,
+    "prediction_label": "HIGH RISK",
+    "probability": 0.993279755115509,
+    "reasons": [
+      {
+        "feature": "failed_tx_ratio",
+        "value": 0.2,
+        "z_vs_low_risk": 4.044069285959803,
+        "importance_weight": 0.2129092396904073,
+        "reason_score": 0.8610197169290299,
+        "gradient_attribution": -0.1908000409603119
+      },
+      {
+        "feature": "historical_liquidation_count",
+        "value": 5.0,
+        "z_vs_low_risk": 7.335792867703592,
+        "importance_weight": 0.10322290910020705,
+        "reason_score": 0.7572218803609151,
+        "gradient_attribution": -0.15564502775669098
+      },
+      {
+        "feature": "borrow_frequency",
+        "value": 0.4,
+        "z_vs_low_risk": 3.5647418356085514,
+        "importance_weight": 0.0640344723023321,
+        "reason_score": 0.22826636233724026,
+        "gradient_attribution": 0.1860315352678299
+      },
+      {
+        "feature": "borrow_intensity",
+        "value": 0.411156,
+        "z_vs_low_risk": 2.218114600446974,
+        "importance_weight": 0.09071161609251222,
+        "reason_score": 0.201208760084942,
+        "gradient_attribution": 0.0007734135142527521
+      },
+      {
+        "feature": "borrow_volume",
+        "value": 24802.949718,
+        "z_vs_low_risk": 3.1676257575619906,
+        "importance_weight": 0.06054576234087565,
+        "reason_score": 0.19178631630218448,
+        "gradient_attribution": -0.08392446488142014
+      }
+    ]
+  }
+]

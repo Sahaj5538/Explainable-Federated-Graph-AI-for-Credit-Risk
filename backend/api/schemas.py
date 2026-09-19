@@ -150,3 +150,21 @@ class ImportanceResponse(BaseModel):
 
     baseline_macro_f1: float
     features: List[ImportanceItem]
+
+
+class ShapFeature(BaseModel):
+
+    feature: str
+    shap_value: float
+    value: float
+
+
+class ShapResponse(BaseModel):
+
+    account_id: int
+    prediction: str
+    high_risk_probability: float
+    method: str
+    base_value: float
+    additivity_gap: float
+    features: List[ShapFeature]
