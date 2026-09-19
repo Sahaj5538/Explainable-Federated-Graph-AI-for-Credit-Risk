@@ -2,9 +2,16 @@ import React, { useEffect, useRef, useState } from 'react'
 
 export default function IntroAnimation({ onComplete }) {
   const canvasRef = useRef(null)
-  const [stage, setStage] = useState(0) // 0: Nodes, 1: Connections, 2: V formation, 3: Text fade, 4: Done
+  const [stage, setStage] = useState(0)
+  const [fadingOut, setFadingOut] = useState(false)
 
   useEffect(() => {
+    // Check session storage to avoid repeating during internal navigation
+    if (sessionStorage.getItem('vertex_intro_seen')) {
+      onComplete()
+      return
+    }
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -14,23 +21,19 @@ export default function IntroAnimation({ onComplete }) {
     const width = (canvas.width = window.innerWidth)
     const height = (canvas.height = window.innerHeight)
     const cx = width / 2
-    const cy = height / 2 - 40
+    const cy = height / 2 - 30
 
-    // Node set
-    const numNodes = 45
+    const numNodes = 40
     const nodes = []
     for (let i = 0; i < numNodes; i++) {
-      const angle = Math.random() * Math.PI * 2
-      const radius = 100 + Math.random() * 250
+      const angle = (i / numNodes) * Math.PI * 2
+      const radius = 120 + Math.random() * 220
       nodes.push({
         x: cx + Math.cos(angle) * radius,
         y: cy + Math.sin(angle) * radius,
-        targetX: cx + (Math.random() - 0.5) * 180,
-        targetY: cy + (Math.random() - 0.5) * 180,
-        // Stylized V shape targets
-        vX: i % 2 === 0 ? cx - 80 + (i / numNodes) * 80 : cx + (i / numNodes) * 80,
-        vY: cy - 60 + (i / numNodes) * 120,
-        size: Math.random() * 2.5 + 2,
+        targetX: cx + Math.cos(angle) * (100 + (i % 4) * 35),
+        targetY: cy + Math.sin(angle) * (100 + (i % 4) * 35),
+        size: i % 5 === 0 ? 4 : 2.5,
         alpha: 0,
       })
     }
@@ -41,32 +44,36 @@ export default function IntroAnimation({ onComplete }) {
       ctx.fillStyle = '#080A0C'
       ctx.fillRect(0, 0, width, height)
 
-      // Stage progression
-      if (elapsed < 1.0) {
-        setStage(0) // Node birth
-      } else if (elapsed < 2.2) {
-        setStage(1) // Connections
-      } else if (elapsed < 3.8) {
-        setStage(2) // Converge into V
-      } else if (elapsed < 4.8) {
-        setStage(3) // Text display
+      // Timeline sequence
+      if (elapsed < 0.3) {
+        setStage(0) // Black background
+      } else if (elapsed < 0.7) {
+        setStage(1) // Nodes appear
+      } else if (elapsed < 1.2) {
+        setStage(2) // Lines connect
+      } else if (elapsed < 1.8) {
+        setStage(3) // Converge & Title
+      } else if (elapsed < 2.8) {
+        setStage(4) // Subtitle & Morphing start
+      } else if (elapsed < 3.2) {
+        setFadingOut(true)
       } else {
-        setStage(4)
+        sessionStorage.setItem('vertex_intro_seen', 'true')
         onComplete()
         return
       }
 
-      // Draw Connections
-      if (stage >= 1) {
+      // Draw Connections (Stage 2+)
+      if (elapsed >= 0.7) {
         ctx.lineWidth = 0.8
         for (let i = 0; i < numNodes; i++) {
           for (let j = i + 1; j < numNodes; j++) {
             const dx = nodes[i].x - nodes[j].x
             const dy = nodes[i].y - nodes[j].y
             const dist = Math.sqrt(dx * dx + dy * dy)
-            if (dist < 110) {
-              const alpha = (1 - dist / 110) * (stage >= 2 ? 0.2 : 0.4)
-              ctx.strokeStyle = i % 3 === 0 ? `rgba(32, 201, 151, ${alpha})` : `rgba(41, 49, 56, ${alpha})`
+            if (dist < 130) {
+              const lineAlpha = (1 - dist / 130) * Math.min(1, (elapsed - 0.7) * 2) * 0.45
+              ctx.strokeStyle = i % 3 === 0 ? `rgba(32, 201, 151, ${lineAlpha})` : `rgba(146, 156, 163, ${lineAlpha})`
               ctx.beginPath()
               ctx.moveTo(nodes[i].x, nodes[i].y)
               ctx.lineTo(nodes[j].x, nodes[j].y)
@@ -76,35 +83,40 @@ export default function IntroAnimation({ onComplete }) {
         }
       }
 
-      // Draw Nodes
-      nodes.forEach((node, i) => {
-        if (stage === 0) {
-          node.alpha = Math.min(1, elapsed * 1.5)
-        } else if (stage === 2) {
-          // Move towards V target
-          node.x += (node.vX - node.x) * 0.08
-          node.y += (node.vY - node.y) * 0.08
-        }
+      // Draw Nodes (Stage 1+)
+      if (elapsed >= 0.3) {
+        nodes.forEach((node, i) => {
+          node.alpha = Math.min(1, (elapsed - 0.3) * 2)
 
-        ctx.fillStyle = i % 4 === 0 ? `rgba(32, 201, 151, ${node.alpha})` : `rgba(233, 238, 241, ${node.alpha})`
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2)
-        ctx.fill()
-      })
+          // Convergence physics (Stage 3+)
+          if (elapsed >= 1.2) {
+            node.x += (node.targetX - node.x) * 0.05
+            node.y += (node.targetY - node.y) * 0.05
+          }
+
+          ctx.fillStyle = i % 4 === 0 ? `rgba(32, 201, 151, ${node.alpha})` : `rgba(233, 238, 241, ${node.alpha})`
+          ctx.beginPath()
+          ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2)
+          ctx.fill()
+        })
+      }
 
       animationFrameId = requestAnimationFrame(render)
     }
 
     animationFrameId = requestAnimationFrame(render)
     return () => cancelAnimationFrame(animationFrameId)
-  }, [onComplete, stage])
+  }, [onComplete])
 
   return (
-    <div className="intro-overlay">
-      <button className="btn btn-ghost btn-sm intro-skip-btn" onClick={onComplete}>
-        Skip Intro →
-      </button>
-
+    <div
+      className="intro-overlay"
+      style={{
+        opacity: fadingOut ? 0 : 1,
+        transition: 'opacity 0.5s ease-out',
+        pointerEvents: fadingOut ? 'none' : 'auto',
+      }}
+    >
       <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
 
       <div
@@ -113,19 +125,20 @@ export default function IntroAnimation({ onComplete }) {
           zIndex: 10,
           textAlign: 'center',
           marginTop: 180,
-          opacity: stage >= 2 ? 1 : 0,
-          transition: 'opacity 0.8s ease',
+          opacity: stage >= 3 ? 1 : 0,
+          transform: stage >= 3 ? 'translateY(0)' : 'translateY(10px)',
+          transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         <h1
           style={{
             fontFamily: 'var(--font-heading)',
-            fontSize: 48,
+            fontSize: 46,
             fontWeight: 700,
-            letterSpacing: '0.25em',
+            letterSpacing: '0.22em',
             color: 'var(--text-primary)',
-            marginBottom: 8,
-            textShadow: '0 0 30px rgba(32, 201, 151, 0.4)',
+            marginBottom: 6,
+            textShadow: '0 0 35px rgba(32, 201, 151, 0.35)',
           }}
         >
           VERTEX
@@ -133,12 +146,12 @@ export default function IntroAnimation({ onComplete }) {
         <p
           style={{
             fontFamily: 'var(--font-heading)',
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: 600,
-            letterSpacing: '0.15em',
+            letterSpacing: '0.14em',
             color: 'var(--accent-emerald)',
             textTransform: 'uppercase',
-            marginBottom: 24,
+            marginBottom: 20,
           }}
         >
           GRAPH CREDIT INTELLIGENCE
@@ -147,10 +160,12 @@ export default function IntroAnimation({ onComplete }) {
           style={{
             fontSize: 13,
             color: 'var(--text-secondary)',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.06em',
+            opacity: stage >= 4 ? 1 : 0,
+            transition: 'opacity 0.5s ease',
           }}
         >
-          Privacy • Explainability • Federation • DeFi
+          Privacy-Preserving AI for DeFi Credit Risk
         </p>
       </div>
     </div>

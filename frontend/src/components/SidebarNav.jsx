@@ -1,10 +1,13 @@
 import React from 'react'
 import {
   LayoutDashboard,
-  Network,
-  Wallet,
+  TrendingUp,
+  PieChart,
+  ArrowUpRight,
+  ArrowDownRight,
   ShieldAlert,
   BrainCircuit,
+  Network,
   BarChart3,
   Flame,
   Users,
@@ -17,41 +20,39 @@ import {
 export default function SidebarNav({ activeTab, setActiveTab }) {
   const sections = [
     {
-      title: 'Overview',
+      title: 'OVERVIEW',
       items: [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'markets', label: 'Markets', icon: TrendingUp }
       ]
     },
     {
-      title: 'Intelligence',
+      title: 'YOUR FINANCE',
       items: [
-        { id: 'network', label: 'Network Explorer', icon: Network },
-        { id: 'wallets', label: 'Wallet Intelligence', icon: Wallet },
-        { id: 'risk', label: 'Risk Assessment', icon: ShieldAlert }
+        { id: 'portfolio', label: 'Portfolio', icon: PieChart },
+        { id: 'supply', label: 'Supply', icon: ArrowUpRight },
+        { id: 'borrow', label: 'Borrow', icon: ArrowDownRight }
       ]
     },
     {
-      title: 'Explainability',
+      title: 'RISK INTELLIGENCE',
       items: [
-        { id: 'explainability', label: 'XAI Explanations', icon: BrainCircuit }
+        { id: 'credit-risk', label: 'Credit Risk', icon: ShieldAlert },
+        { id: 'explainability', label: 'XAI Explanation', icon: BrainCircuit },
+        { id: 'network', label: 'Network Analysis', icon: Network }
       ]
     },
     {
-      title: 'Models',
+      title: 'AI INFRASTRUCTURE',
       items: [
-        { id: 'models', label: 'Model Comparison', icon: BarChart3 },
-        { id: 'training', label: 'Training Dynamics', icon: Flame }
-      ]
-    },
-    {
-      title: 'Federation',
-      items: [
+        { id: 'model-performance', label: 'Model Performance', icon: BarChart3 },
+        { id: 'training', label: 'Training Dynamics', icon: Flame },
         { id: 'federation', label: 'Federated Learning', icon: Users },
         { id: 'privacy', label: 'Privacy Center', icon: Lock }
       ]
     },
     {
-      title: 'System',
+      title: 'SYSTEM',
       items: [
         { id: 'architecture', label: 'Architecture', icon: Workflow },
         { id: 'status', label: 'System Status', icon: Activity }
@@ -84,7 +85,7 @@ export default function SidebarNav({ activeTab, setActiveTab }) {
                   className={`nav-item ${isActive ? 'active' : ''}`}
                   onClick={() => setActiveTab(item.id)}
                 >
-                  <Icon size={18} className="nav-icon" />
+                  <Icon size={17} className="nav-icon" />
                   <span>{item.label}</span>
                 </button>
               )
@@ -96,7 +97,7 @@ export default function SidebarNav({ activeTab, setActiveTab }) {
       <div className="sidebar-footer">
         <div className="system-status-indicator">
           <span className="status-dot-pulse" />
-          <span>Graph Engine Active</span>
+          <span>Graph Credit Engine Active</span>
         </div>
       </div>
     </aside>

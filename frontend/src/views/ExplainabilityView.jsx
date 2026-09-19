@@ -1,23 +1,21 @@
 import React, { useEffect, useState } from 'react'
-import { BrainCircuit, GitMerge, BarChart2, HelpCircle, ArrowRight } from 'lucide-react'
+import { BrainCircuit, GitMerge, BarChart2, Info } from 'lucide-react'
 import { api } from '../api.js'
 import ShapPanel from '../components/ShapPanel.jsx'
 
 export default function ExplainabilityView({ onSelectAccount }) {
   const [selectedAccount, setSelectedAccount] = useState(789)
   const [importance, setImportance] = useState(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.importance()
       .then(setImportance)
       .catch(() => {})
-      .finally(() => setLoading(false))
   }, [])
 
   return (
     <div className="section-stack">
-      {/* Overview Banner */}
+      {/* Banner */}
       <div className="titanium-card" style={{ background: 'linear-gradient(135deg, rgba(23, 28, 33, 0.9), rgba(13, 16, 19, 0.95))' }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
           <div className="brand-logo-mark" style={{ minWidth: 44, height: 44 }}>
@@ -25,9 +23,9 @@ export default function ExplainabilityView({ onSelectAccount }) {
           </div>
           <div>
             <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>
-              Explainable AI (XAI) Attribution Suite
+              Vertex Explainable AI (XAI) Attribution Suite
             </h3>
-            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', maxWdith: 900, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               VERTEX provides dual-level explainability: <strong>Feature-Level Attribution</strong> via Kernel SHAP and <strong>Graph-Level Attribution</strong> via GNNExplainer gradient attributions & z-score deviations against solvent baseline populations.
             </p>
           </div>
@@ -41,15 +39,15 @@ export default function ExplainabilityView({ onSelectAccount }) {
           <div className="card-header">
             <div className="card-header-title">
               <BarChart2 className="card-header-icon" size={18} />
-              <span>1. Feature-Level Attribution (SHAP)</span>
+              <span>1. Feature-Level Attribution (Kernel SHAP)</span>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              <strong>"What tabular features influenced this prediction?"</strong>
-            </p>
-            <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-              Kernel SHAP computes exact Shapley values across 300 background feature permutations, quantifying the marginal contribution of each financial metric relative to the Low-Risk mean baseline.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <p><strong>"What tabular features influenced this prediction?"</strong></p>
+            <p>
+              Kernel SHAP evaluates Monte-Carlo permutations across 300 background feature configurations, measuring exact Shapley values. 
+              <span style={{ color: 'var(--risk-high)', fontWeight: 600 }}> Positive attribution (Red)</span> increases predicted liquidation risk; 
+              <span style={{ color: 'var(--privacy-cyan)', fontWeight: 600 }}> negative attribution (Cyan)</span> reduces risk toward stability.
             </p>
           </div>
         </div>
@@ -62,12 +60,10 @@ export default function ExplainabilityView({ onSelectAccount }) {
               <span>2. Graph-Level Attribution (GNNExplainer)</span>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              <strong>"What structural graph relationships influenced this prediction?"</strong>
-            </p>
-            <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-              GNNExplainer extracts the optimal sub-graph mask and node feature attributions using Integrated-Gradients, highlighting connected counterparty wallets and DeFi protocol interactions.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <p><strong>"What structural graph relationships influenced this prediction?"</strong></p>
+            <p>
+              GNNExplainer identifies the optimal sub-graph mask and edge feature weights using Integrated-Gradients, isolating key counterparty wallet connections and DeFi protocol liquidity dependencies.
             </p>
           </div>
         </div>

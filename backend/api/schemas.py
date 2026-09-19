@@ -168,3 +168,21 @@ class ShapResponse(BaseModel):
     base_value: float
     additivity_gap: float
     features: List[ShapFeature]
+
+
+class ModelMetricItem(BaseModel):
+
+    name: str
+    category: str
+    accuracy: float
+    macro_f1: float
+    positive_recall: Optional[float] = None
+    positive_f1: Optional[float] = None
+
+
+class ModelPerformanceResponse(BaseModel):
+
+    primary_metric: str
+    best_model: str
+    models: List[ModelMetricItem]
+

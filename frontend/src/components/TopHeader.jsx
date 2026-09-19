@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Activity, Shield, Cpu, RefreshCw } from 'lucide-react'
+import { Activity, Shield, Cpu, RefreshCw, CheckCircle, Wallet } from 'lucide-react'
 import { api } from '../api.js'
 
-export default function TopHeader({ activeTab, onSearch }) {
+export default function TopHeader({ activeTab }) {
   const [health, setHealth] = useState(null)
   const [loading, setLoading] = useState(false)
 
@@ -20,13 +20,16 @@ export default function TopHeader({ activeTab, onSearch }) {
 
   const titles = {
     dashboard: 'Dashboard Overview',
-    network: 'Interactive Network Explorer',
-    wallets: 'Wallet Intelligence',
-    risk: 'Risk Assessment Laboratory',
+    markets: 'DeFi Liquidity Markets',
+    portfolio: 'Portfolio & Position Management',
+    supply: 'Supply Liquidity',
+    borrow: 'Borrow Credit & Collateral',
+    'credit-risk': 'Vertex Credit Risk Engine',
     explainability: 'XAI Attribution Suite',
-    models: 'Model Lab & Comparison',
+    network: 'Interactive Network Analysis',
+    'model-performance': 'Model Performance & Benchmark',
     training: 'Model Training Dynamics',
-    federation: 'Federated Learning Network',
+    federation: 'Federated DeFi Risk Network',
     privacy: 'Privacy & Security Center',
     architecture: 'System Architecture & Pipeline',
     status: 'System Diagnostics & Health',
@@ -39,14 +42,14 @@ export default function TopHeader({ activeTab, onSearch }) {
       </div>
 
       <div className="header-meta-chips">
-        <div className="meta-chip highlight">
-          <Cpu size={14} />
-          <span>Model: <strong>GraphSAGE</strong> (Heterogeneous)</span>
+        <div className="meta-chip highlight" style={{ backgroundColor: 'rgba(32, 201, 151, 0.08)', borderColor: 'rgba(32, 201, 151, 0.3)' }}>
+          <Wallet size={14} className="text-emerald" />
+          <span>Wallet: <strong className="mono">0x7A...8921</strong> <CheckCircle size={12} style={{ color: 'var(--accent-emerald)', display: 'inline', marginLeft: 4 }} /></span>
         </div>
 
         <div className="meta-chip">
-          <Shield size={14} />
-          <span>Observation: <strong>2025-01 to 2025-04</strong></span>
+          <Cpu size={14} />
+          <span>Model: <strong>GraphSAGE</strong></span>
         </div>
 
         <div className="meta-chip">

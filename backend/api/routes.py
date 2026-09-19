@@ -35,6 +35,8 @@ from backend.api.schemas import (
     ShapFeature,
     ShapResponse,
     StatsResponse,
+    ModelMetricItem,
+    ModelPerformanceResponse,
 )
 from backend.explainability.gnn_explainer import (
     explain_account,
@@ -174,6 +176,92 @@ def stats():
 def importance():
 
     return STATE["importance"]
+
+
+# ============================================================
+# MODEL PERFORMANCE (dynamic evaluation of saved checkpoints)
+# ============================================================
+
+_MODEL_PERFORMANCE_CACHE = None
+
+
+@router.get(
+    "/model-performance",
+    response_model=ModelPerformanceResponse,
+)
+def model_performance():
+
+    global _MODEL_PERFORMANCE_CACHE
+
+    if _MODEL_PERFORMANCE_CACHE is not None:
+        return _MODEL_PERFORMANCE_CACHE
+
+    try:
+        from backend.evaluation.compare_models import (
+            collect_binary_results,
+        )
+
+        raw_results = collect_binary_results()
+
+        models = []
+
+        for item in raw_results:
+
+            name = item.get("model", "Unknown")
+
+            is_gnn = (
+                "Logistic" not in name
+                and "Hist" not in name
+                and "Random" not in name
+                and "XGBoost" not in name
+            )
+
+            category = "GNN" if is_gnn else "Traditional ML"
+
+            models.append(
+                ModelMetricItem(
+                    name=name,
+                    category=category,
+                    accuracy=round(
+                        float(item.get("accuracy", 0.0)), 4
+                    ),
+                    macro_f1=round(
+                        float(item.get("macro_f1", 0.0)), 4
+                    ),
+                    positive_recall=(
+                        round(float(item["positive_recall"]), 4)
+                        if item.get("positive_recall") is not None
+                        else None
+                    ),
+                    positive_f1=(
+                        round(float(item["positive_f1"]), 4)
+                        if item.get("positive_f1") is not None
+                        else None
+                    ),
+                )
+            )
+
+        best = (
+            max(models, key=lambda m: m.macro_f1).name
+            if models
+            else "GraphSAGE"
+        )
+
+        _MODEL_PERFORMANCE_CACHE = {
+            "primary_metric": "Macro F1",
+            "best_model": best,
+            "models": models,
+        }
+
+        return _MODEL_PERFORMANCE_CACHE
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load model evaluation metrics: {error}",
+        )
+
 
 
 # ============================================================

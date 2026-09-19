@@ -6,10 +6,13 @@ import DetailModal from './components/DetailModal.jsx'
 
 // Views
 import DashboardView from './views/DashboardView.jsx'
-import NetworkExplorerView from './views/NetworkExplorerView.jsx'
-import WalletIntelligenceView from './views/WalletIntelligenceView.jsx'
-import RiskAssessmentView from './views/RiskAssessmentView.jsx'
+import MarketsView from './views/MarketsView.jsx'
+import PortfolioView from './views/PortfolioView.jsx'
+import SupplyView from './views/SupplyView.jsx'
+import BorrowView from './views/BorrowView.jsx'
+import CreditRiskView from './views/CreditRiskView.jsx'
 import ExplainabilityView from './views/ExplainabilityView.jsx'
+import NetworkExplorerView from './views/NetworkExplorerView.jsx'
 import ModelComparisonView from './views/ModelComparisonView.jsx'
 import TrainingView from './views/TrainingView.jsx'
 import FederatedLearningView from './views/FederatedLearningView.jsx'
@@ -24,7 +27,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {/* 1. Cinematic Intro Overlay */}
+      {/* 1. Startup Intro Animation */}
       {showIntro && (
         <IntroAnimation onComplete={() => setShowIntro(false)} />
       )}
@@ -37,9 +40,37 @@ export default function App() {
         <TopHeader activeTab={activeTab} />
 
         <main className="main-content">
+          {/* OVERVIEW */}
           {activeTab === 'dashboard' && (
             <DashboardView
               onNavigateTab={setActiveTab}
+              onSelectAccount={setInspectedAccountId}
+            />
+          )}
+
+          {activeTab === 'markets' && (
+            <MarketsView onNavigateTab={setActiveTab} />
+          )}
+
+          {/* YOUR FINANCE */}
+          {activeTab === 'portfolio' && (
+            <PortfolioView onNavigateTab={setActiveTab} />
+          )}
+
+          {activeTab === 'supply' && <SupplyView />}
+
+          {activeTab === 'borrow' && <BorrowView />}
+
+          {/* RISK INTELLIGENCE */}
+          {activeTab === 'credit-risk' && (
+            <CreditRiskView
+              onNavigateTab={setActiveTab}
+              onSelectAccount={setInspectedAccountId}
+            />
+          )}
+
+          {activeTab === 'explainability' && (
+            <ExplainabilityView
               onSelectAccount={setInspectedAccountId}
             />
           )}
@@ -51,25 +82,8 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'wallets' && (
-            <WalletIntelligenceView
-              onSelectAccount={setInspectedAccountId}
-            />
-          )}
-
-          {activeTab === 'risk' && (
-            <RiskAssessmentView
-              onSelectAccount={setInspectedAccountId}
-            />
-          )}
-
-          {activeTab === 'explainability' && (
-            <ExplainabilityView
-              onSelectAccount={setInspectedAccountId}
-            />
-          )}
-
-          {activeTab === 'models' && <ModelComparisonView />}
+          {/* AI INFRASTRUCTURE */}
+          {activeTab === 'model-performance' && <ModelComparisonView />}
 
           {activeTab === 'training' && <TrainingView />}
 
@@ -77,6 +91,7 @@ export default function App() {
 
           {activeTab === 'privacy' && <PrivacyCenterView />}
 
+          {/* SYSTEM */}
           {activeTab === 'architecture' && <SystemArchitectureView />}
 
           {activeTab === 'status' && <SystemStatusView />}

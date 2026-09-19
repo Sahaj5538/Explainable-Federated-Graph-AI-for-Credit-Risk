@@ -9,76 +9,153 @@ import {
   ArrowRight,
   BrainCircuit,
   Lock,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  BarChart3,
+  CheckCircle,
+  HelpCircle
 } from 'lucide-react'
 import { api, pct, formatNumber } from '../api.js'
 import MetricCard from '../components/MetricCard.jsx'
 import NetworkGraphCanvas from '../components/NetworkGraphCanvas.jsx'
 
 export default function DashboardView({ onNavigateTab, onSelectAccount }) {
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [modelPerf, setModelPerf] = useState(null)
+  const [perfLoading, setPerfLoading] = useState(true)
+  const [perfError, setPerfError] = useState(null)
+
+  const fetchModelPerformance = () => {
+    setPerfLoading(true)
+    setPerfError(null)
+    api.modelPerformance()
+      .then(setModelPerf)
+      .catch((err) => setPerfError(err.message))
+      .finally(() => setPerfLoading(false))
+  }
 
   useEffect(() => {
-    setLoading(true)
-    api.stats()
-      .then(setStats)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
+    fetchModelPerformance()
   }, [])
-
-  if (loading) return <div className="loading-state"><div className="spinner-ring" /><span>Loading Intelligence Dashboard…</span></div>
-  if (error) return <div className="error">Dashboard load error: {error}</div>
-
-  const model = stats.model
-  const dataset = stats.dataset
-  const fed = stats.clients
-  const topFeatures = stats.top_features || []
-
-  const highRiskRatio = dataset.actual_high_risk / (dataset.accounts || 1)
-  const lowRiskCount = dataset.accounts - dataset.actual_high_risk
 
   return (
     <div className="section-stack">
-      {/* Metrics Row */}
-      <div className="grid-4">
-        <MetricCard
-          title="Total Evaluated Accounts"
-          value={formatNumber(dataset.accounts)}
-          subtitle={`Window: ${dataset.observation_window}`}
-          icon={Users}
-          accent="emerald"
-        />
-        <MetricCard
-          title="High Risk Liquidations"
-          value={formatNumber(dataset.predicted_high_risk)}
-          subtitle={`${pct(highRiskRatio)} of network accounts`}
-          icon={ShieldAlert}
-          accent="gold"
-        />
-        <MetricCard
-          title="GraphSAGE Test Accuracy"
-          value={pct(model.test_accuracy)}
-          subtitle={`Macro F1: ${pct(model.macro_f1)}`}
-          icon={Award}
-          accent="emerald"
-        />
-        <MetricCard
-          title="Federated Status"
-          value={fed?.trained ? 'ACTIVE' : 'READY'}
-          subtitle={fed?.trained ? `${fed.rounds} Rounds · ${fed.clients?.length || 3} Clients` : 'FedAvg aggregation ready'}
-          icon={Lock}
-          accent="gold"
-        />
+      {/* Top Greeting & Wallet Context Banner */}
+      <div className="titanium-card" style={{ background: 'linear-gradient(135deg, rgba(23, 28, 33, 0.9), rgba(13, 16, 19, 0.95))' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 13, color: 'var(--accent-emerald)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+              DeFi Credit Intelligence
+            </div>
+            <h2 style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)' }}>Good evening</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+              Active Session: <span className="mono" style={{ color: 'var(--text-primary)' }}>0x7A4b...8921</span> · Connected <CheckCircle size={13} style={{ color: 'var(--accent-emerald)', display: 'inline', marginLeft: 2 }} />
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button className="btn btn-primary" onClick={() => onNavigateTab('borrow')}>
+              <span>Borrow Asset</span>
+              <ArrowRight size={14} />
+            </button>
+            <button className="btn btn-ghost" onClick={() => onNavigateTab('credit-risk')}>
+              <span>Test Account ID</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Hero Interactive Network Element */}
+      {/* DeFi Portfolio Summary Row (Labeled Simulated Position) */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>
+            DeFi Financial Position Summary
+          </span>
+          <span className="risk-badge low" style={{ fontSize: 10 }}>Demo Environment</span>
+        </div>
+
+        <div className="grid-4">
+          <MetricCard
+            title="Total Supplied"
+            value="$24,850"
+            subtitle="Collateral Position (USDC, ETH, WBTC)"
+            icon={TrendingUp}
+            accent="emerald"
+          />
+          <MetricCard
+            title="Total Borrowed"
+            value="$9,420"
+            subtitle="Active Liquidity Loans"
+            icon={ShieldAlert}
+            accent="gold"
+          />
+          <MetricCard
+            title="Available Borrowing"
+            value="$7,830"
+            subtitle="Credit Allowance"
+            icon={Users}
+            accent="emerald"
+          />
+          <MetricCard
+            title="Health Factor"
+            value="2.64"
+            subtitle="Solvency Threshold > 1.0"
+            icon={Award}
+            accent="emerald"
+          />
+        </div>
+      </div>
+
+      {/* VERTEX CREDIT RISK SCORE CARD (Hero Feature) */}
+      <div className="titanium-card" style={{ border: '1px solid rgba(32, 201, 151, 0.4)', background: 'linear-gradient(135deg, rgba(32, 201, 151, 0.05), rgba(23, 28, 33, 0.95))' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 24 }}>
+          <div style={{ flex: 1, minWidth: 300 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent-emerald)' }}>
+                Vertex Graph AI Credit Engine
+              </span>
+              <span className="risk-badge low" style={{ fontSize: 10 }}>Simulated Position</span>
+            </div>
+
+            <h3 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+              VERTEX CREDIT SCORE: <span style={{ color: 'var(--accent-emerald)' }}>842 / 1000</span>
+            </h3>
+
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 640 }}>
+              Vertex evaluates wallet transaction behaviour, repayment patterns, failed transactions, borrowing behaviour, and graph relationships to estimate credit/liquidation risk.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ padding: '16px 24px', backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Liquidation Probability</div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 700, color: 'var(--accent-emerald)' }}>4.8%</div>
+              <div className="risk-badge low" style={{ fontSize: 10, marginTop: 4 }}>LOW RISK</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200, padding: 14, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', fontSize: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Repayment Reliability:</span>
+                <strong className="mono" style={{ color: 'var(--accent-emerald)' }}>94.2%</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Transaction Reliability:</span>
+                <strong className="mono" style={{ color: 'var(--accent-emerald)' }}>91.7%</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Graph Stability:</span>
+                <strong className="mono" style={{ color: 'var(--accent-emerald)' }}>88.4%</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* LARGE INTERACTIVE NETWORK GRAPH (Centerpiece) */}
       <div className="titanium-card">
         <div className="card-header">
           <div className="card-header-title">
             <Network className="card-header-icon" size={18} />
-            <span>Hero Network Topology Intelligence</span>
+            <span>Account & Protocol Relationship Topology</span>
           </div>
 
           <button
@@ -91,99 +168,82 @@ export default function DashboardView({ onNavigateTab, onSelectAccount }) {
         </div>
 
         <NetworkGraphCanvas
-          height={440}
+          height={480}
           onSelectAccount={onSelectAccount}
           onNavigateTab={onNavigateTab}
         />
       </div>
 
-      {/* Analytics Split: Risk Distribution & Global Feature Importance */}
-      <div className="grid-2">
-        {/* Risk Distribution Breakdown */}
-        <div className="titanium-card">
-          <div className="card-header">
-            <div className="card-header-title">
-              <ShieldAlert className="card-header-icon" size={18} />
-              <span>Liquidation Risk Distribution</span>
-            </div>
+      {/* COMPACT MODEL PERFORMANCE CARD (Dynamic Backend Metrics) */}
+      <div className="titanium-card" style={{ border: '1px solid var(--border-bright)' }}>
+        <div className="card-header">
+          <div className="card-header-title">
+            <BarChart3 className="card-header-icon" size={18} />
+            <span>MODEL PERFORMANCE — Traditional ML vs Graph Neural Networks</span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'flex', height: 28, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-main)' }}>
-              <div
-                style={{
-                  width: `${(100 * lowRiskCount) / dataset.accounts}%`,
-                  backgroundColor: 'var(--risk-low)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#080A0C',
-                  fontSize: 11,
-                  fontWeight: 700,
-                }}
-              >
-                LOW RISK ({pct(lowRiskCount / dataset.accounts)})
-              </div>
-              <div
-                style={{
-                  width: `${(100 * dataset.actual_high_risk) / dataset.accounts}%`,
-                  backgroundColor: 'var(--risk-high)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#FFFFFF',
-                  fontSize: 11,
-                  fontWeight: 700,
-                }}
-              >
-                HIGH ({pct(highRiskRatio)})
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Solvent Accounts (Low Risk)</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--risk-low)' }}>{formatNumber(lowRiskCount)}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>No future liquidations</div>
-              </div>
-
-              <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>At-Risk Accounts (High Risk)</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--risk-high)' }}>{formatNumber(dataset.actual_high_risk)}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>≥1 future liquidation event</div>
-              </div>
-            </div>
-          </div>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => onNavigateTab('model-performance')}
+          >
+            <span>Full Infrastructure Benchmark</span>
+            <ChevronRight size={14} />
+          </button>
         </div>
 
-        {/* Global Permutation Importance Bars */}
-        <div className="titanium-card">
-          <div className="card-header">
-            <div className="card-header-title">
-              <BrainCircuit className="card-header-icon" size={18} />
-              <span>Global Feature Attributions</span>
-            </div>
-            <button className="btn btn-ghost btn-sm" onClick={() => onNavigateTab('explainability')}>
-              Details <ChevronRight size={14} />
-            </button>
+        {perfError && (
+          <div className="error" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Unable to retrieve model evaluation results: {perfError}</span>
+            <button className="btn btn-sm" onClick={fetchModelPerformance}>Retry</button>
           </div>
+        )}
 
-          <div className="bar-chart-stack">
-            {topFeatures.slice(0, 5).map((f) => {
-              const maxImp = Math.max(...topFeatures.map((item) => item.importance), 0.01)
-              const widthPct = (100 * Math.max(f.importance, 0)) / maxImp
-              return (
-                <div className="bar-row-grid" key={f.feature}>
-                  <span className="bar-row-label">{f.feature}</span>
-                  <div className="bar-track-bg">
-                    <div className="bar-fill-emerald" style={{ width: `${widthPct}%` }} />
+        {perfLoading && (
+          <div className="loading-state" style={{ padding: '24px 0' }}>
+            <div className="spinner-ring" />
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Loading model benchmark metrics from backend...</span>
+          </div>
+        )}
+
+        {modelPerf && !perfLoading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Evaluated Checkpoints ({modelPerf.models.length} Models) · Primary Metric: <strong>{modelPerf.primary_metric}</strong></span>
+              <span>Top Performer: <strong style={{ color: 'var(--accent-emerald)' }}>{modelPerf.best_model}</strong></span>
+            </div>
+
+            <div className="bar-chart-stack">
+              {modelPerf.models.map((m) => {
+                const maxVal = Math.max(...modelPerf.models.map((x) => x.macro_f1), 0.01)
+                const widthPct = (100 * m.macro_f1) / maxVal
+                const isGNN = m.category === 'GNN'
+                const isWinner = m.name === modelPerf.best_model
+
+                return (
+                  <div className="bar-row-grid" key={m.name}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="bar-row-label" style={{ fontWeight: isWinner ? 600 : 400, color: isWinner ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                        {m.name}
+                      </span>
+                      <span style={{ fontSize: 9.5, padding: '1px 5px', borderRadius: 3, backgroundColor: isGNN ? 'rgba(32, 201, 151, 0.12)' : 'rgba(255, 255, 255, 0.06)', color: isGNN ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }}>
+                        {m.category}
+                      </span>
+                    </div>
+
+                    <div className="bar-track-bg">
+                      <div
+                        className={isGNN ? 'bar-fill-emerald' : 'bar-fill-gold'}
+                        style={{ width: `${widthPct}%` }}
+                      />
+                    </div>
+
+                    <span className="bar-row-val" style={{ fontWeight: 600 }}>{pct(m.macro_f1)}</span>
                   </div>
-                  <span className="bar-row-val">{f.importance.toFixed(4)}</span>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

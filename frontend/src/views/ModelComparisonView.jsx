@@ -1,71 +1,112 @@
-import React, { useState } from 'react'
-import { Trophy, BarChart3, HelpCircle, Layers, Cpu, ShieldCheck, Zap } from 'lucide-react'
-import { pct } from '../api.js'
+import React, { useEffect, useState } from 'react'
+import { Trophy, BarChart3, HelpCircle, Layers, Cpu, ShieldCheck, Zap, RefreshCw, Database } from 'lucide-react'
+import { api, pct } from '../api.js'
 
 export default function ModelComparisonView() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [selectedMetric, setSelectedMetric] = useState('macro_f1')
 
-  // Benchmark metrics derived directly from backend evaluation runs
-  const benchmarkModels = [
-    { name: 'GraphSAGE', type: 'GNN', accuracy: 0.970, precision: 0.941, recall: 0.980, macro_f1: 0.937, isWinner: true },
-    { name: 'Graph Transformer', type: 'GNN', accuracy: 0.965, precision: 0.935, recall: 0.975, macro_f1: 0.928, isWinner: false },
-    { name: 'GAT (Attention)', type: 'GNN', accuracy: 0.958, precision: 0.920, recall: 0.965, macro_f1: 0.915, isWinner: false },
-    { name: 'GCN (Convolutional)', type: 'GNN', accuracy: 0.950, precision: 0.910, recall: 0.955, macro_f1: 0.902, isWinner: false },
-    { name: 'GraphSAGE (Federated)', type: 'Federated GNN', accuracy: 0.962, precision: 0.930, recall: 0.970, macro_f1: 0.924, isWinner: false },
-    { name: 'HistGradientBoosting', type: 'Tabular Baseline', accuracy: 0.942, precision: 0.895, recall: 0.940, macro_f1: 0.885, isWinner: false },
-    { name: 'Logistic Regression', type: 'Tabular Baseline', accuracy: 0.885, precision: 0.810, recall: 0.880, macro_f1: 0.812, isWinner: false },
-  ]
+  const fetchMetrics = () => {
+    setLoading(true)
+    setError(null)
+    api.modelPerformance()
+      .then((res) => {
+        setData(res)
+        setLoading(false)
+      })
+      .catch((err) => {
+        setError(err.message)
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => {
+    fetchMetrics()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="loading-state">
+        <div className="spinner-ring" />
+        <span>Loading model evaluation results from backend pipeline...</span>
+      </div>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <div className="section-stack">
+        <div className="titanium-card">
+          <div className="card-header-title" style={{ marginBottom: 12, color: 'var(--risk-high)' }}>
+            Model Performance Engine Unavailable
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+            Unable to retrieve evaluation results from the backend evaluation pipeline: {error || 'No response'}
+          </p>
+          <button className="btn btn-primary" onClick={fetchMetrics}>
+            <RefreshCw size={14} /> Retry Connecting to Evaluation Pipeline
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const models = data.models || []
+  const bestModelName = data.best_model || 'GraphSAGE'
+  const winner = models.find((m) => m.name === bestModelName) || models[0]
 
   const metricsConfig = [
-    { id: 'macro_f1', label: 'Macro F1 Score', desc: 'Harmonic balance between precision and recall across all classes.' },
+    { id: 'macro_f1', label: 'Macro F1 Score', desc: 'Balanced metric across Low and High risk classes.' },
     { id: 'accuracy', label: 'Test Accuracy', desc: 'Overall percentage of correct risk predictions.' },
-    { id: 'recall', label: 'HIGH RISK Recall', desc: 'Percentage of actual liquidation accounts correctly detected.' },
-    { id: 'precision', label: 'HIGH RISK Precision', desc: 'Percentage of predicted high-risk accounts that actually liquidated.' },
+    { id: 'positive_recall', label: 'HIGH RISK Recall', desc: 'Percentage of actual liquidation accounts correctly detected.' },
+    { id: 'positive_f1', label: 'HIGH RISK F1', desc: 'F1 harmonic score specifically on the HIGH RISK class.' },
   ]
-
-  const winner = benchmarkModels.find((m) => m.isWinner)
 
   return (
     <div className="section-stack">
-      {/* Highlighted Winner Banner */}
+      {/* Top Banner & Dynamic Winner Identification */}
       <div className="titanium-card" style={{ border: '1px solid rgba(32, 201, 151, 0.4)', background: 'linear-gradient(135deg, rgba(32, 201, 151, 0.08), rgba(23, 28, 33, 0.95))' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--accent-emerald-glow)', border: '1px solid var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyCenter: 'center', color: 'var(--accent-emerald)' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--accent-emerald-glow)', border: '1px solid var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-emerald)' }}>
               <Trophy size={26} style={{ margin: 'auto' }} />
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent-emerald)', marginBottom: 2 }}>
-                Top Performing Architecture
+                Top Performing Model Architecture
               </div>
               <h3 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {winner.name} (Heterogeneous GNN)
+                {winner?.name} ({winner?.category})
               </h3>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-                Outperforms tabular baselines by leveraging 2-hop transaction graph topology + 11 account features.
+                Dynamically calculated from backend evaluation checkpoints on held-out test split.
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 16 }}>
-            <div style={{ textAlign: 'center', padding: '10px 18px', backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Test Accuracy</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-emerald)' }}>{pct(winner.accuracy)}</div>
+          {winner && (
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div style={{ textAlign: 'center', padding: '10px 18px', backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Test Accuracy</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-emerald)' }}>{pct(winner.accuracy)}</div>
+              </div>
+              <div style={{ textAlign: 'center', padding: '10px 18px', backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Macro F1</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-emerald)' }}>{pct(winner.macro_f1)}</div>
+              </div>
             </div>
-            <div style={{ textAlign: 'center', padding: '10px 18px', backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Macro F1</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-emerald)' }}>{pct(winner.macro_f1)}</div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Interactive Metric Switcher & Chart */}
+      {/* Interactive Metric Switcher & Horizontal Bar Chart */}
       <div className="titanium-card">
         <div className="card-header">
           <div className="card-header-title">
             <BarChart3 className="card-header-icon" size={18} />
-            <span>Benchmark Metric Comparison Matrix</span>
+            <span>Model Performance — Comparison of traditional machine learning and graph neural network approaches</span>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -81,25 +122,32 @@ export default function ModelComparisonView() {
           </div>
         </div>
 
-        <div className="bar-chart-stack" style={{ marginTop: 12 }}>
-          {benchmarkModels.map((m) => {
+        <div className="bar-chart-stack" style={{ marginTop: 16 }}>
+          {models.map((m) => {
             const val = m[selectedMetric]
-            const isGNN = m.type.includes('GNN')
+            const isGNN = m.category === 'GNN'
+            const isWinner = m.name === bestModelName
+
+            if (val === null || val === undefined) return null
+
+            const maxVal = Math.max(...models.map((x) => x[selectedMetric] || 0), 0.01)
+            const widthPct = (100 * val) / maxVal
+
             return (
               <div className="bar-row-grid" key={m.name}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="bar-row-label" style={{ fontWeight: m.isWinner ? 600 : 400, color: m.isWinner ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                  <span className="bar-row-label" style={{ fontWeight: isWinner ? 600 : 400, color: isWinner ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                     {m.name}
                   </span>
-                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, backgroundColor: isGNN ? 'rgba(32, 201, 151, 0.12)' : 'rgba(255, 255, 255, 0.06)', color: isGNN ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }}>
-                    {m.type}
+                  <span style={{ fontSize: 9.5, padding: '1px 5px', borderRadius: 3, backgroundColor: isGNN ? 'rgba(32, 201, 151, 0.12)' : 'rgba(255, 255, 255, 0.06)', color: isGNN ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }}>
+                    {m.category}
                   </span>
                 </div>
 
                 <div className="bar-track-bg">
                   <div
                     className={isGNN ? 'bar-fill-emerald' : 'bar-fill-gold'}
-                    style={{ width: `${val * 100}%` }}
+                    style={{ width: `${widthPct}%` }}
                   />
                 </div>
 
@@ -110,12 +158,55 @@ export default function ModelComparisonView() {
         </div>
       </div>
 
-      {/* Non-Technical Metric Explanations Glossary */}
+      {/* Model Benchmark Data Table */}
+      <div className="titanium-card">
+        <div className="card-header">
+          <div className="card-header-title">
+            <Layers className="card-header-icon" size={18} />
+            <span>Evaluated Model Metrics Table (Backend Checkpoints)</span>
+          </div>
+        </div>
+
+        <div className="table-container">
+          <table className="vertex-table">
+            <thead>
+              <tr>
+                <th>Model Architecture</th>
+                <th>Category</th>
+                <th>Accuracy</th>
+                <th>Macro F1</th>
+                <th>HIGH RISK Recall</th>
+                <th>HIGH RISK F1</th>
+              </tr>
+            </thead>
+            <tbody>
+              {models.map((m) => (
+                <tr key={m.name} style={{ backgroundColor: m.name === bestModelName ? 'rgba(32, 201, 151, 0.04)' : 'transparent' }}>
+                  <td style={{ fontWeight: m.name === bestModelName ? 600 : 400 }}>
+                    {m.name} {m.name === bestModelName ? '★' : ''}
+                  </td>
+                  <td>
+                    <span className="risk-badge low" style={{ fontSize: 10, backgroundColor: m.category === 'GNN' ? 'rgba(32, 201, 151, 0.1)' : 'rgba(214, 168, 79, 0.1)', color: m.category === 'GNN' ? 'var(--accent-emerald)' : 'var(--accent-gold)' }}>
+                      {m.category}
+                    </span>
+                  </td>
+                  <td className="mono" style={{ fontWeight: 600 }}>{pct(m.accuracy)}</td>
+                  <td className="mono" style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>{pct(m.macro_f1)}</td>
+                  <td className="mono">{m.positive_recall !== null ? pct(m.positive_recall) : 'N/A'}</td>
+                  <td className="mono">{m.positive_f1 !== null ? pct(m.positive_f1) : 'N/A'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Non-Technical Metric Glossary */}
       <div className="titanium-card">
         <div className="card-header">
           <div className="card-header-title">
             <HelpCircle className="card-header-icon" size={18} />
-            <span>Understanding Machine Learning Metrics (Non-Technical Guide)</span>
+            <span>Non-Technical Metric Glossary</span>
           </div>
         </div>
 
@@ -130,46 +221,33 @@ export default function ModelComparisonView() {
           <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
             <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 6 }}>Precision</h4>
             <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              "When the model flags an account as HIGH RISK, how often is it actually correct?"
+              "When the model predicts high risk, how often is it actually correct?"
             </p>
           </div>
 
           <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
             <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 6 }}>Recall</h4>
             <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              "Out of all the actual liquidation accounts, how many did the model detect?"
+              "How many of the actual high-risk wallets did the model detect?"
             </p>
           </div>
 
           <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
             <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 6 }}>F1 Score</h4>
             <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              "The single combined score balancing both precision and recall fairly."
+              "A balance between precision and recall."
             </p>
           </div>
         </div>
       </div>
 
-      {/* Traditional ML vs Graph AI Paradigm Comparison */}
-      <div className="grid-2">
-        <div className="titanium-card">
-          <div className="card-header-title" style={{ marginBottom: 12 }}>
-            <Cpu size={16} className="text-gold" />
-            <span>Traditional Tabular Models (Logistic / HistGradient)</span>
+      {/* Data Provenance & Pipeline Source */}
+      <div className="titanium-card">
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <Database size={20} className="text-emerald" />
+          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <strong style={{ color: 'var(--text-primary)' }}>Data Provenance:</strong> Evaluation results generated dynamically by the VERTEX model evaluation pipeline (`backend.evaluation.compare_models`) from saved PyTorch checkpoints in `backend/model/saved_models/`. Test set: 152 held-out account nodes.
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Operate exclusively on isolated tabular rows (account features). They cannot observe counterparty transaction links or protocol liquidity dependencies, resulting in missed contagion risks.
-          </p>
-        </div>
-
-        <div className="titanium-card">
-          <div className="card-header-title" style={{ marginBottom: 12 }}>
-            <Zap size={16} className="text-emerald" />
-            <span>Graph Neural Networks (GraphSAGE / GAT)</span>
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            Aggregate representations across the 2-hop transaction network. Combining tabular features with graph relational topology yields <strong>+8.5% higher Macro F1</strong> over traditional baselines.
-          </p>
         </div>
       </div>
     </div>
