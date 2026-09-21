@@ -18,22 +18,34 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [graphFilter, setGraphFilter] = useState('all')
   const [inspectedAccountId, setInspectedAccountId] = useState(null)
+  const [explainAccountId, setExplainAccountId] = useState(null)
+  const [graphInteracting, setGraphInteracting] = useState(false)
 
   const isDashboard = activeTab === 'dashboard'
 
+  // Central navigation. Accepts an optional payload, e.g.
+  //   navigate('explainability', { accountId: 42 })
+  // which is how "Deep Explanation" hands the analysed account over to the
+  // XAI view (the old stale-789 bug).
+  const navigate = (tab, opts) => {
+    setActiveTab(tab)
+    setExplainAccountId(opts && opts.accountId != null ? opts.accountId : null)
+  }
+
   return (
     <div className="app-shell">
-      {/* 1. Startup Intro Animation (slowed, silver) */}
+      {/* 1. Startup Intro Animation (cinematic, silver) */}
       {showIntro && <IntroAnimation onComplete={() => setShowIntro(false)} />}
 
       {/* 2. Left Navigation */}
-      <SidebarNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      <SidebarNav activeTab={activeTab} setActiveTab={(tab) => navigate(tab)} />
 
       {/* 3. The graph - hero on the dashboard, living background everywhere else */}
       <GraphStage
         mode={isDashboard ? 'hero' : 'background'}
         filter={graphFilter}
         onSelectAccount={setInspectedAccountId}
+        onUserInteraction={setGraphInteracting}
       />
 
       {/* 4. Main workspace (floats above the background graph) */}
@@ -43,22 +55,25 @@ export default function App() {
         <main className={`main-content${isDashboard ? ' over-graph' : ''}`}>
           {isDashboard && (
             <DashboardView
-              onNavigateTab={setActiveTab}
-              onSelectAccount={setInspectedAccountId}
+              onNavigateTab={navigate}
               graphFilter={graphFilter}
               setGraphFilter={setGraphFilter}
+              overlayHidden={graphInteracting}
             />
           )}
 
           {activeTab === 'credit-risk' && (
             <CreditRiskView
-              onNavigateTab={setActiveTab}
+              onNavigateTab={navigate}
               onSelectAccount={setInspectedAccountId}
             />
           )}
 
           {activeTab === 'explainability' && (
-            <ExplainabilityView onSelectAccount={setInspectedAccountId} />
+            <ExplainabilityView
+              focusAccountId={explainAccountId}
+              onSelectAccount={setInspectedAccountId}
+            />
           )}
 
           {activeTab === 'model-performance' && <ModelComparisonView />}

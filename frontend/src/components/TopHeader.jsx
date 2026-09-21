@@ -20,8 +20,8 @@ export default function TopHeader({ activeTab }) {
 
   const titles = {
     dashboard: 'The Credit Graph',
-    'credit-risk': 'Credit Risk Assessment',
-    explainability: 'Explainable AI',
+    'credit-risk': 'Credit Risk Analysis',
+    explainability: 'Deep Explanation',
     'model-performance': 'Model Performance',
     federation: 'Federated Learning',
     status: 'System Status',

@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react'
-import { BrainCircuit, Cpu, Zap, Info } from 'lucide-react'
+import { BrainCircuit, Zap } from 'lucide-react'
 import { api, pct } from '../api.js'
+import { humanFeature } from '../labels.js'
+
+// ---------------------------------------------------------------------------
+// WHAT MOVED THIS SCORE
+//
+// Per-factor attribution for one account. Each bar shows how much that single
+// factor pushed the risk estimate up (red, to the right) or down (silver, to
+// the left). Labels are human-readable; the underlying method is exact
+// Shapley-value attribution, so every contribution adds up to the final score.
+// ---------------------------------------------------------------------------
 
 export default function ShapPanel({ accountId, autoLoad = false }) {
   const [shap, setShap] = useState(null)
@@ -24,10 +34,10 @@ export default function ShapPanel({ accountId, autoLoad = false }) {
   }
 
   useEffect(() => {
-    if (autoLoad && accountId) load()
+    if (autoLoad && accountId != null) load()
   }, [accountId, autoLoad])
 
-  if (error) return <div className="error">Kernel SHAP calculation failed: {error}</div>
+  if (error) return <div className="error">Attribution calculation failed: {error}</div>
 
   if (!shap) {
     return (
@@ -35,23 +45,23 @@ export default function ShapPanel({ accountId, autoLoad = false }) {
         <div className="card-header">
           <div className="card-header-title">
             <BrainCircuit className="card-header-icon" size={18} />
-            <span>Kernel SHAP Local Feature Attribution</span>
+            <span>What Moved This Score</span>
           </div>
         </div>
 
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-          Run exact Shapley Value estimation on the trained binary GraphSAGE model against the reference low-risk training baseline profile.
+          Measures the exact contribution of every factor to this account's risk score.
         </p>
 
         <button className="btn btn-primary" onClick={load} disabled={loading}>
-          <Zap size={14} /> {loading ? 'Evaluating Kernel SHAP (Server Cache)...' : 'Compute SHAP Attribution'}
+          <Zap size={14} /> {loading ? 'Computing attribution…' : 'Compute Attribution'}
         </button>
 
         {loading && (
           <div className="loading-state" style={{ padding: '24px 0' }}>
             <div className="spinner-ring" />
             <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              Executing 300 background Monte-Carlo permutations — results cached server-side...
+              Measuring each factor's effect on the score…
             </span>
           </div>
         )}
@@ -66,20 +76,11 @@ export default function ShapPanel({ accountId, autoLoad = false }) {
       <div className="card-header">
         <div className="card-header-title">
           <BrainCircuit className="card-header-icon" size={18} />
-          <span>Kernel SHAP Local Feature Attribution (GraphSAGE)</span>
+          <span>What Moved This Score</span>
         </div>
-        {seconds && <span className="meta-chip"><Zap size={12} /> Computed in {seconds}s</span>}
-      </div>
-
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
-        <div className="meta-chip">
-          <span>Baseline Reference P(Low): <strong>{shap.base_value.toFixed(4)}</strong></span>
-        </div>
-        <div className="meta-chip highlight">
-          <span>Predicted P(High Risk): <strong>{shap.high_risk_probability.toFixed(4)}</strong></span>
-        </div>
-        <div className="meta-chip">
-          <span>Additivity Gap: <strong>{shap.additivity_gap.toFixed(6)}</strong></span>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <span className="meta-chip highlight">Risk probability <strong>{pct(shap.high_risk_probability)}</strong></span>
+          {seconds && <span className="meta-chip"><Zap size={12} /> {seconds}s</span>}
         </div>
       </div>
 
@@ -87,14 +88,13 @@ export default function ShapPanel({ accountId, autoLoad = false }) {
         {shap.features.map((f) => {
           const widthPct = (100 * Math.abs(f.shap_value)) / maxAbs
           const isPositive = f.shap_value >= 0
-
           return (
             <div key={f.feature} className="bar-row-grid">
-              <span className="bar-row-label">{f.feature}</span>
-              <div style={{ display: 'flex', height: 14, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-full)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+              <span className="bar-row-label">{humanFeature(f.feature)}</span>
+              <div className="shap-track">
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
                   {!isPositive && (
-                    <div style={{ width: `${widthPct}%`, backgroundColor: '#6FA8DC', borderRadius: 'var(--radius-full)' }} />
+                    <div style={{ width: `${widthPct}%`, backgroundColor: '#8B98A5', borderRadius: 'var(--radius-full)' }} />
                   )}
                 </div>
                 <div style={{ width: 2, backgroundColor: 'var(--border-bright)' }} />
@@ -104,7 +104,7 @@ export default function ShapPanel({ accountId, autoLoad = false }) {
                   )}
                 </div>
               </div>
-              <span className="mono" style={{ textAlign: 'right', fontSize: 12, color: isPositive ? 'var(--risk-high)' : 'var(--privacy-cyan)' }}>
+              <span className="mono" style={{ textAlign: 'right', fontSize: 12, color: isPositive ? 'var(--risk-high)' : 'var(--text-silver)' }}>
                 {isPositive ? '+' : ''}{f.shap_value.toFixed(4)}
               </span>
             </div>
@@ -112,14 +112,14 @@ export default function ShapPanel({ accountId, autoLoad = false }) {
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: 20, fontSize: 12, color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
+      <div style={{ display: 'flex', gap: 20, fontSize: 12, color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)', paddingTop: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 10, height: 10, backgroundColor: '#E05A5A', borderRadius: 2 }} />
-          <span>Red: Pushes towards Liquidation Risk</span>
+          <span>Raises the risk score</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 10, height: 10, backgroundColor: '#6FA8DC', borderRadius: 2 }} />
-          <span>Cyan: Pushes towards Low Risk Stability</span>
+          <span style={{ width: 10, height: 10, backgroundColor: '#8B98A5', borderRadius: 2 }} />
+          <span>Lowers the risk score</span>
         </div>
       </div>
     </div>

@@ -48,7 +48,7 @@
   /* Category Accents */
   --federated-purple: #9277D8;
   --federated-bg: rgba(146, 119, 216, 0.12);
-  --privacy-cyan: #6FA8DC;
+  --privacy-cyan: #8B98A5;
   --privacy-bg: rgba(111, 168, 220, 0.12);
 
   /* Typography Fonts */
@@ -533,15 +533,16 @@ code, pre, .mono {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #1fa57e, #138765);
-  border-color: var(--accent-silver);
-  color: #FFFFFF;
-  box-shadow: 0 4px 14px rgba(201, 210, 217, 0.25);
+  background: var(--text-silver);
+  border-color: var(--text-silver);
+  color: #0B0E11;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #24bd90, #179b74);
-  box-shadow: 0 6px 18px rgba(201, 210, 217, 0.35);
+  background: #F2F6F9;
+  border-color: #F2F6F9;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
 }
 
 .btn-ghost {
@@ -654,7 +655,7 @@ code, pre, .mono {
 
 .bar-fill-silver {
   height: 100%;
-  background: linear-gradient(90deg, #138765, var(--accent-silver));
+  background: linear-gradient(90deg, #929CA3, #F2F6F9);
   border-radius: var(--radius-full);
   transition: width var(--transition-normal);
 }
@@ -705,27 +706,6 @@ code, pre, .mono {
 /* ==========================================================================
    ANIMATIONS & INTRO OVERLAY
    ========================================================================== */
-
-.intro-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--obsidian-bg);
-  z-index: 999;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.intro-skip-btn {
-  position: absolute;
-  top: 32px;
-  right: 32px;
-  z-index: 1000;
-}
 
 /* Loading & Empty States */
 .loading-state {
@@ -810,6 +790,7 @@ code, pre, .mono {
   z-index: 1;
   background: transparent;
   min-height: calc(100vh - var(--header-height));
+  pointer-events: none; /* let drags/zooms reach the 3D graph behind */
 }
 
 .dashboard-overlay {
@@ -836,15 +817,6 @@ code, pre, .mono {
   margin-bottom: 6px;
 }
 
-.dash-headline {
-  font-family: var(--font-heading);
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.25;
-  margin-bottom: 18px;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.8);
-}
 
 .dash-stats {
   display: flex;
@@ -909,46 +881,8 @@ code, pre, .mono {
   font-weight: 600;
 }
 
-.dash-bottom {
-  position: absolute;
-  bottom: 18px;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  font-size: 12.5px;
-}
 
-.dash-legend {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
 
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-left: 10px;
-}
-
-.legend-dot.low { background: #39424D; border: 1px solid var(--border-bright); }
-.legend-dot.high { background: #F2F6F9; box-shadow: 0 0 8px rgba(242, 246, 249, 0.6); }
-
-.legend-diamond {
-  width: 9px;
-  height: 9px;
-  background: #C9D2D9;
-  transform: rotate(45deg);
-  display: inline-block;
-  margin-left: 10px;
-  margin-right: 2px;
-}
 
 /* ==========================================================================
    NARRATIVE (plain-English credit risk explanation)
@@ -1119,3 +1053,471 @@ code, pre, .mono {
 }
 
 .text-silver { color: var(--text-silver); }
+
+/* ==========================================================================
+   INTRO v2 — cinematic (GPU-only: transform / opacity / filter)
+   ========================================================================== */
+
+.intro2 {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #080A0C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.intro2-lockup {
+  text-align: center;
+  will-change: transform, opacity, filter;
+}
+
+.intro2-word {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--text-primary);
+}
+
+.intro2-v {
+  display: inline-block;
+  animation: intro2-hero 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+.intro2-l {
+  display: inline-block;
+  opacity: 0;
+  animation: intro2-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+.intro2-sweep {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(100deg, transparent 0%, rgba(242, 246, 249, 0.16) 45%, rgba(242, 246, 249, 0.75) 50%, rgba(242, 246, 249, 0.16) 55%, transparent 100%);
+  transform: translateX(-180%);
+  animation: intro2-sweep 1.15s cubic-bezier(0.4, 0, 0.2, 1) 1.5s both;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.intro2-rule {
+  height: 1px;
+  width: 300px;
+  margin: 18px auto 22px;
+  background: linear-gradient(90deg, transparent, #C9D2D9, transparent);
+  transform: scaleX(0);
+  animation: intro2-rule 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.9s both;
+  will-change: transform;
+}
+
+.intro2-sub {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--text-silver);
+  opacity: 0;
+  animation: intro2-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) 2.3s both;
+  will-change: transform, opacity;
+}
+
+.intro2-tag {
+  margin-top: 12px;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  opacity: 0;
+  animation: intro2-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) 2.8s both;
+  will-change: transform, opacity;
+}
+
+/* the exit: lockup scales forward + dissolves, backdrop fades to the app */
+.intro2-exit {
+  background: transparent;
+  transition: background 0.9s ease 0.25s;
+  pointer-events: none;
+}
+
+.intro2-exit .intro2-lockup {
+  animation: intro2-zoom 1.2s cubic-bezier(0.7, 0, 0.5, 1) both;
+}
+
+@keyframes intro2-hero {
+  from { opacity: 0; transform: scale(1.45); filter: blur(18px); }
+  to   { opacity: 1; transform: scale(1);    filter: blur(0); }
+}
+
+@keyframes intro2-in {
+  from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+
+@keyframes intro2-sweep {
+  from { transform: translateX(-180%); }
+  to   { transform: translateX(420%); }
+}
+
+@keyframes intro2-rule {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes intro2-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes intro2-zoom {
+  from { opacity: 1; transform: scale(1);    filter: blur(0); }
+  to   { opacity: 0; transform: scale(1.16); filter: blur(10px); }
+}
+
+/* ==========================================================================
+   DASHBOARD OVERLAY — smooth fade while the user interacts with the graph
+   ========================================================================== */
+
+.dashboard-overlay > * {
+  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard-overlay.overlay-hidden > * {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none !important;
+}
+
+.dash-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   CREDIT SCORE GAUGE + ACCOUNT TRANSACTION NETWORK
+   ========================================================================== */
+
+.gauge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.gauge-wrap {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.ego-caption {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 4px;
+}
+
+.shap-track {
+  display: flex;
+  height: 14px;
+  background-color: var(--obsidian-deep);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   MODEL PERFORMANCE — chart grid (each metric in its own roomy card)
+   ========================================================================== */
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+
+.chart-grid .titanium-card.span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 1024px) {
+  .chart-grid { grid-template-columns: 1fr; }
+  .chart-grid .titanium-card.span-2 { grid-column: span 1; }
+}
+
+.chart-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   WHAT-IF SIMULATOR
+   ========================================================================== */
+
+.wif-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px 26px;
+  margin-bottom: 22px;
+}
+
+.wif-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wif-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.wif-slider-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.wif-slider-value {
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+.wif-slider-bounds {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-faint, #616B74);
+}
+
+.wif-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #2A3138, #5A6672);
+  outline: none;
+  cursor: pointer;
+}
+
+.wif-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--text-silver);
+  border: 2px solid #080A0C;
+  box-shadow: 0 0 0 1px var(--text-silver);
+  transition: background 0.15s ease;
+}
+
+.wif-range::-webkit-slider-thumb:hover {
+  background: #F2F6F9;
+}
+
+.wif-range::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--text-silver);
+  border: 2px solid #080A0C;
+}
+
+.wif-result {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(13, 16, 19, 0.65);
+}
+
+.wif-result-changed {
+  border-color: var(--border-accent);
+}
+
+.wif-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+}
+
+.wif-cell-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint, #616B74);
+}
+
+.wif-cell-score {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.wif-cell-band {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.wif-cell-prob {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.wif-arrow {
+  font-size: 22px;
+  color: var(--text-faint, #616B74);
+}
+
+.wif-delta {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+}
+
+.wif-delta-good {
+  color: var(--text-primary);
+  background: rgba(146, 156, 163, 0.16);
+  border: 1px solid rgba(146, 156, 163, 0.35);
+}
+
+.wif-delta-bad {
+  color: #F2F6F9;
+  background: rgba(224, 90, 90, 0.16);
+  border: 1px solid rgba(224, 90, 90, 0.4);
+}
+
+/* ==========================================================================
+   FIRST-VISIT TOUR
+   ========================================================================== */
+
+.tour-card {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 340px;
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-accent);
+  background: rgba(16, 20, 24, 0.92);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-lg);
+}
+
+.tour-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint, #616B74);
+  cursor: pointer;
+}
+
+.tour-close:hover {
+  color: var(--text-primary);
+}
+
+.tour-step-count {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint, #616B74);
+  margin-bottom: 6px;
+}
+
+.tour-title {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.tour-text {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.tour-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.tour-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #39424D;
+}
+
+.tour-dot.active {
+  background: var(--text-silver);
+}
+
+.wif-key .wif-slider-label {
+  color: var(--text-primary);
+}
+
+.wif-key-chip {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--obsidian-bg);
+  background: var(--text-silver);
+  border-radius: var(--radius-full);
+  vertical-align: 1px;
+}

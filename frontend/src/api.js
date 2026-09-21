@@ -34,6 +34,31 @@ export const api = {
   predict: (accountId) => postJson('/api/predict', { account_id: accountId }),
   modelPerformance: () => getJson('/api/model-performance'),
   network: () => getJson('/api/network'),
+  whatifContext: (accountId) => getJson(`/api/whatif/${accountId}/context`),
+  whatif: (accountId, overrides) =>
+    postJson('/api/whatif', { account_id: accountId, overrides }),
+  resolve: (q) => getJson(`/api/resolve?q=${encodeURIComponent(q)}`),
+}
+
+// Accepts a numeric account ID or a 0x wallet address; returns the numeric ID.
+export async function resolveAccount(raw) {
+  const q = String(raw || '').trim()
+  if (!q) throw new Error('Please enter an account ID or a wallet address')
+  if (/^-?\d+$/.test(q)) return parseInt(q, 10)
+  if (q.toLowerCase().startsWith('0x')) {
+    const r = await api.resolve(q)
+    return r.account_id
+  }
+  throw new Error('Enter a numeric account ID or a wallet address starting with 0x')
+}
+
+// The network payload (~1000 accounts + edges) is fetched once per session and
+// shared by every consumer (the 3D graph, the dashboard chips, the per-account
+// transaction graph).
+let networkPromise = null
+export function getNetwork() {
+  if (!networkPromise) networkPromise = api.network()
+  return networkPromise
 }
 
 export const pct = (value, digits = 1) => {

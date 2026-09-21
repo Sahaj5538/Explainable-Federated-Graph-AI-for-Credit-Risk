@@ -1,66 +1,99 @@
 import React, { useEffect, useState } from 'react'
-import { ArrowRight, BrainCircuit, ShieldAlert } from 'lucide-react'
-import { api, pct, formatNumber } from '../api.js'
+import { ShieldAlert, BrainCircuit, ChevronRight, X } from 'lucide-react'
+import { api, getNetwork, pct, formatNumber } from '../api.js'
 
 // ---------------------------------------------------------------------------
 // DASHBOARD - the graph IS the dashboard.
 //
-// The interactive 3D graph lives in GraphStage behind this view (hero mode).
-// Here we only render minimal, translucent overlays so the graph stays the
-// dominant element: a few stat chips, graph filters and a hint line.
+// Only minimal overlays float over the hero graph:
+//   * the name + four live stat chips (accounts, transactions, high-risk,
+//     accuracy)
+//   * graph filters (all / high / moderate / low / protocols)
+//   * a one-line hint
+//
+// When the user interacts with the 3D graph (rotate / zoom / click), the
+// overlay fades out smoothly (CSS transition) and fades back in ~1.6 s after
+// the last gesture - the Netflix-logo fade, not a hard cut.
 // ---------------------------------------------------------------------------
 
-export default function DashboardView({ onNavigateTab, onSelectAccount, graphFilter, setGraphFilter }) {
+const TOUR_KEY = 'vertex_tour_seen'
+
+const TOUR_STEPS = [
+  {
+    title: 'Rotate the graph',
+    text: 'Drag anywhere to rotate the 3D credit network in any direction.',
+  },
+  {
+    title: 'Zoom in and out',
+    text: 'Scroll to move closer or further. The labels step aside while you interact.',
+  },
+  {
+    title: 'Inspect an account',
+    text: 'Click any sphere to open its full credit analysis.',
+  },
+]
+
+export default function DashboardView({
+  onNavigateTab,
+  graphFilter,
+  setGraphFilter,
+  overlayHidden,
+}) {
   const [stats, setStats] = useState(null)
+  const [net, setNet] = useState(null)
+  const [tourStep, setTourStep] = useState(() =>
+    typeof sessionStorage !== 'undefined' && sessionStorage.getItem(TOUR_KEY)
+      ? -1
+      : 0
+  )
+
+  const finishTour = () => {
+    sessionStorage.setItem(TOUR_KEY, 'true')
+    setTourStep(-1)
+  }
 
   useEffect(() => {
     api.stats().then(setStats).catch(() => {})
+    getNetwork().then(setNet).catch(() => {})
   }, [])
 
-  const edges =
-    stats && stats.dataset
-      ? null // filled from network stats when available
-      : null
+  const chips = [
+    {
+      value: stats ? formatNumber(stats.dataset.accounts) : '—',
+      label: 'accounts',
+    },
+    {
+      value: net ? formatNumber(net.transactions_count) : '—',
+      label: 'transactions',
+    },
+    {
+      value: stats ? formatNumber(stats.dataset.actual_high_risk) : '—',
+      label: 'high-risk accounts',
+    },
+    {
+      value: stats && stats.model ? pct(stats.model.test_accuracy) : '—',
+      label: 'model accuracy',
+    },
+  ]
 
   return (
-    <div className="dashboard-overlay">
+    <div className={`dashboard-overlay${overlayHidden ? ' overlay-hidden' : ''}`}>
       {/* top-left: identity + minimal stats */}
       <div className="dash-top-left">
-        <div className="dash-caption">Graph Credit Intelligence</div>
-        <div className="dash-headline">
-          Every circle is a wallet. Every diamond is a protocol.
-        </div>
+        <div className="dash-caption">Vertex · Graph Credit Intelligence</div>
 
         <div className="dash-stats">
-          <div className="dash-chip">
-            <span className="dash-chip-value mono">
-              {stats ? formatNumber(stats.dataset.accounts) : '—'}
-            </span>
-            <span className="dash-chip-label">accounts</span>
-          </div>
-          <div className="dash-chip">
-            <span className="dash-chip-value mono">
-              {stats ? formatNumber(stats.dataset.actual_high_risk) : '—'}
-            </span>
-            <span className="dash-chip-label">high-risk wallets</span>
-          </div>
-          <div className="dash-chip">
-            <span className="dash-chip-value mono">
-              {stats && stats.model ? pct(stats.model.test_accuracy) : '—'}
-            </span>
-            <span className="dash-chip-label">model accuracy</span>
-          </div>
-          <div className="dash-chip">
-            <span className="dash-chip-value mono">
-              {stats && stats.clients ? stats.clients.clients.length : '—'}
-            </span>
-            <span className="dash-chip-label">federated clients</span>
-          </div>
+          {chips.map((c) => (
+            <div key={c.label} className="dash-chip">
+              <span className="dash-chip-value mono">{c.value}</span>
+              <span className="dash-chip-label">{c.label}</span>
+            </div>
+          ))}
         </div>
 
         <div className="dash-actions">
           <button className="btn btn-primary btn-sm" onClick={() => onNavigateTab('credit-risk')}>
-            <ShieldAlert size={14} /> Run Risk Assessment
+            <ShieldAlert size={14} /> Run Credit Analysis
           </button>
           <button className="btn btn-ghost btn-sm" onClick={() => onNavigateTab('explainability')}>
             <BrainCircuit size={14} /> Explain a Prediction
@@ -71,8 +104,9 @@ export default function DashboardView({ onNavigateTab, onSelectAccount, graphFil
       {/* top-right: graph filters */}
       <div className="dash-top-right">
         {[
-          ['all', 'All nodes'],
+          ['all', 'All accounts'],
           ['high', 'High risk'],
+          ['moderate', 'Moderate'],
           ['low', 'Low risk'],
           ['protocols', 'Protocols'],
         ].map(([value, label]) => (
@@ -86,15 +120,35 @@ export default function DashboardView({ onNavigateTab, onSelectAccount, graphFil
         ))}
       </div>
 
-      {/* bottom-center: how to use the graph */}
-      <div className="dash-bottom">
-        <span className="muted">Drag to rotate · Scroll to zoom · Click an account node to inspect it</span>
-        <span className="dash-legend">
-          <span className="legend-dot low" /> low risk
-          <span className="legend-dot high" /> high risk
-          <span className="legend-diamond" /> protocol
-        </span>
-      </div>
+      {/* bottom-center: one quiet hint line */}
+      <div className="dash-hint">Drag to rotate · Scroll to zoom · Click an account to inspect it</div>
+
+      {/* first-visit guided tour */}
+      {tourStep >= 0 && tourStep < TOUR_STEPS.length && (
+        <div className="tour-card">
+          <button className="tour-close" onClick={finishTour} aria-label="Skip tour">
+            <X size={13} />
+          </button>
+          <div className="tour-step-count">
+            {tourStep + 1} of {TOUR_STEPS.length}
+          </div>
+          <div className="tour-title">{TOUR_STEPS[tourStep].title}</div>
+          <div className="tour-text">{TOUR_STEPS[tourStep].text}</div>
+          <div className="tour-footer">
+            <div className="tour-dots">
+              {TOUR_STEPS.map((_, i) => (
+                <span key={i} className={i === tourStep ? 'tour-dot active' : 'tour-dot'} />
+              ))}
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => (tourStep === TOUR_STEPS.length - 1 ? finishTour() : setTourStep(tourStep + 1))}
+            >
+              {tourStep === TOUR_STEPS.length - 1 ? 'Got it' : 'Next'} <ChevronRight size={13} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

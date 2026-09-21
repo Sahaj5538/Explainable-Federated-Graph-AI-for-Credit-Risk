@@ -8,7 +8,7 @@ Pydantic models defining the API contract (request bodies and
 response shapes) for the frontend and external applications.
 """
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -209,4 +209,46 @@ class ModelPerformanceResponse(BaseModel):
     primary_metric: str
     best_model: str
     models: List[ModelMetricItem]
+    ablation: List[ModelMetricItem] = []
 
+
+
+# ============================================================
+# WHAT-IF SIMULATOR + LOOKUP
+# ============================================================
+
+class WhatIfFactor(BaseModel):
+
+    feature: str
+    current: float
+    min: float
+    max: float
+    step: float
+    safe: float
+    key: bool = False
+
+
+class WhatIfContext(BaseModel):
+
+    account_id: int
+    probability: float
+    factors: List[WhatIfFactor]
+
+
+class WhatIfRequest(BaseModel):
+
+    account_id: int
+    overrides: Dict[str, float]
+
+
+class WhatIfResponse(BaseModel):
+
+    account_id: int
+    probability: float
+    baseline_probability: float
+
+
+class ResolveResponse(BaseModel):
+
+    account_id: int
+    wallet: str
