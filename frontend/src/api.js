@@ -33,6 +33,7 @@ export const api = {
   shap: (accountId) => getJson(`/api/shap/${accountId}`),
   predict: (accountId) => postJson('/api/predict', { account_id: accountId }),
   modelPerformance: () => getJson('/api/model-performance'),
+  network: () => getJson('/api/network'),
 }
 
 export const pct = (value, digits = 1) => {

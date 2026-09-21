@@ -1,133 +1,111 @@
 import React, { useEffect, useState } from 'react'
-import { Users, Lock, ShieldCheck, ArrowRight, Server, AlertCircle } from 'lucide-react'
-import { api, pct } from '../api.js'
+import { Users, Lock } from 'lucide-react'
+import { api, pct, formatNumber } from '../api.js'
+
+// ---------------------------------------------------------------------------
+// FEDERATED LEARNING - no lifecycle, no rounds timeline.
+// Just the essentials: the 5 protocol clients, how many accounts each one
+// holds, and the output each side produces (federated vs centralized model
+// on the same held-out test set).
+// ---------------------------------------------------------------------------
 
 export default function FederatedLearningView() {
-  const [stats, setStats] = useState(null)
+  const [state, setState] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    api.stats()
-      .then(setStats)
-      .catch(() => {})
+    Promise.all([api.network(), api.stats()])
+      .then(([net, stats]) => setState({ net, stats }))
+      .catch((e) => setError(e.message))
   }, [])
 
-  const fedInfo = stats?.clients
+  if (error) return <div className="error">Could not load federated data: {error}</div>
+  if (!state) return <div className="loading-state"><div className="spinner-ring" /><span>Loading federation data…</span></div>
 
-  const clients = [
-    { name: 'Aave', label: 'Simulated Client Partition', accounts: 340, share: '34%', status: 'Active Node', f1: fedInfo?.macro_f1 || 0.7033 },
-    { name: 'Compound', label: 'Simulated Client Partition', accounts: 330, share: '33%', status: 'Active Node', f1: fedInfo?.macro_f1 || 0.7033 },
-    { name: 'MakerDAO', label: 'Simulated Client Partition', accounts: 330, share: '33%', status: 'Active Node', f1: fedInfo?.macro_f1 || 0.7033 },
-  ]
+  const { net, stats } = state
+
+  // account counts per client (the non-IID partition)
+  const counts = {}
+  net.accounts.forEach((a) => {
+    counts[a.client] = (counts[a.client] || 0) + 1
+  })
+  const clients = Object.entries(counts).sort((a, b) => b[1] - a[1])
+  const maxCount = Math.max(...clients.map(([, c]) => c), 1)
+
+  const fed = stats.clients
+  const centralAcc = stats.model.test_accuracy
+  const centralF1 = stats.model.macro_f1
+
+  const OutBar = ({ label, fedValue, centValue }) => (
+    <div className="fed-out-row">
+      <div className="fed-out-label">{label}</div>
+      <div className="fed-out-bars">
+        <div className="fed-out-bar">
+          <span className="muted small">federated</span>
+          <div className="fed-track">
+            <div className="fed-fill" style={{ width: `${fedValue * 100}%` }} />
+          </div>
+          <span className="mono fed-out-val">{pct(fedValue)}</span>
+        </div>
+        <div className="fed-out-bar">
+          <span className="muted small">centralized</span>
+          <div className="fed-track">
+            <div className="fed-fill dim" style={{ width: `${centValue * 100}%` }} />
+          </div>
+          <span className="mono fed-out-val">{pct(centValue)}</span>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="section-stack">
-      {/* Mandatory Protocol Disclaimer Banner */}
-      <div className="titanium-card" style={{ border: '1px solid rgba(214, 168, 79, 0.4)', background: 'linear-gradient(135deg, rgba(214, 168, 79, 0.08), rgba(23, 28, 33, 0.95))' }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-          <AlertCircle size={22} style={{ color: 'var(--accent-gold)', minWidth: 22, marginTop: 2 }} />
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>Research Demonstration Environment Disclaimer</strong>
-              <span className="risk-badge medium" style={{ fontSize: 10 }}>Demonstration Environment</span>
-            </div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Aave, Compound and MakerDAO are represented as simulated federated client partitions. No real protocol data or institutional participation is claimed.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Overview Banner */}
-      <div className="titanium-card" style={{ border: '1px solid rgba(146, 119, 216, 0.4)', background: 'linear-gradient(135deg, rgba(146, 119, 216, 0.08), rgba(23, 28, 33, 0.95))' }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--federated-bg)', border: '1px solid var(--federated-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--federated-purple)' }}>
-            <Users size={24} />
-          </div>
-          <div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-              Federated DeFi Risk Network (FedAvg)
-            </h3>
-            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Privacy-preserving collaborative training across independent client partitions. Raw transaction logs remain local on client nodes; only encrypted model parameters are communicated for global aggregation.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Visual Aggregation Workflow Pipeline */}
+      {/* the 5 clients */}
       <div className="titanium-card">
         <div className="card-header">
           <div className="card-header-title">
-            <Server className="card-header-icon" size={18} style={{ color: 'var(--federated-purple)' }} />
-            <span>FedAvg Federated Aggregation Lifecycle</span>
+            <Users className="card-header-icon" size={18} />
+            <span>The 5 federated clients (protocol institutions)</span>
           </div>
+          <span className="muted small">each client trains on its own accounts only</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, padding: '16px 0' }}>
-          <div style={{ flex: 1, minWidth: 160, padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--federated-purple)', marginBottom: 4 }}>1. CLIENTS</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Aave, Compound, MakerDAO</div>
-          </div>
-
-          <ArrowRight size={18} className="text-secondary" />
-
-          <div style={{ flex: 1, minWidth: 160, padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--federated-purple)', marginBottom: 4 }}>2. LOCAL TRAINING</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Private Local GNN</div>
-          </div>
-
-          <ArrowRight size={18} className="text-secondary" />
-
-          <div style={{ flex: 1, minWidth: 160, padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--federated-purple)', marginBottom: 4 }}>3. MODEL UPDATES</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Encrypted Weights</div>
-          </div>
-
-          <ArrowRight size={18} className="text-secondary" />
-
-          <div style={{ flex: 1, minWidth: 160, padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--federated-purple)', marginBottom: 4 }}>4. FEDAVG</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Secure Server Aggregation</div>
-          </div>
-
-          <ArrowRight size={18} className="text-secondary" />
-
-          <div style={{ flex: 1, minWidth: 160, padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-accent)', textAlign: 'center' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 4 }}>5. GLOBAL MODEL</div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>FedAvg Accuracy: {pct(fedInfo?.test_accuracy || 0.7961)}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Simulated Client Partition Breakdown */}
-      <div className="titanium-card">
-        <div className="card-header">
-          <div className="card-header-title">
-            <Users className="card-header-icon" size={18} style={{ color: 'var(--federated-purple)' }} />
-            <span>Simulated Institutional Client Partitions</span>
-          </div>
-        </div>
-
-        <div className="grid-3">
-          {clients.map((c) => (
-            <div key={c.name} style={{ padding: 20, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-main)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <h4 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</h4>
-                <span className="risk-badge low" style={{ fontSize: 10 }}>{c.status}</span>
+        <div className="grid-5">
+          {clients.map(([name, count]) => (
+            <div key={name} className="client-card">
+              <div className="client-name">{name}</div>
+              <div className="client-count mono">{formatNumber(count)}</div>
+              <div className="muted small" style={{ marginBottom: 8 }}>accounts</div>
+              <div className="client-share-track">
+                <div className="client-share-fill" style={{ width: `${(100 * count) / maxCount}%` }} />
               </div>
-              <div style={{ fontSize: 11, color: 'var(--accent-gold)', marginBottom: 14 }}>{c.label}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Partitioned Accounts:</span>
-                  <strong className="mono">{c.accounts} ({c.share})</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Local Macro F1:</span>
-                  <strong className="mono" style={{ color: 'var(--federated-purple)' }}>{pct(c.f1)}</strong>
-                </div>
+              <div className="muted small" style={{ marginTop: 6 }}>
+                {((100 * count) / net.accounts.length).toFixed(1)}% of network
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* outputs */}
+      <div className="titanium-card">
+        <div className="card-header">
+          <div className="card-header-title">
+            <Lock className="card-header-icon" size={18} />
+            <span>Outputs — same held-out test set (0–100 scale)</span>
+          </div>
+          <span className="muted small">
+            {fed.method} — the server only ever sees the masked aggregate
+          </span>
+        </div>
+
+        <OutBar label="Test accuracy" fedValue={fed.test_accuracy} centValue={centralAcc} />
+        <OutBar label="Macro F1" fedValue={fed.macro_f1} centValue={centralF1} />
+
+        <div className="muted small" style={{ marginTop: 14 }}>
+          The federated model keeps {pct(fed.test_accuracy / centralAcc, 1)} of the centralized
+          accuracy while no raw account data ever leaves a client — updates are protected with
+          pairwise-mask secure aggregation.
         </div>
       </div>
     </div>

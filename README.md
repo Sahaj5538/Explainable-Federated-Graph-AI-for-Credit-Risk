@@ -431,3 +431,79 @@ Therefore, there is a need for a framework that can:
 * Preserve privacy while maintaining effective credit risk prediction.
 
 To address these challenges, this project proposes a **Privacy-Preserving Explainable Graph AI Framework for Decentralized Credit Risk Prediction using Federated Graph Neural Networks**.
+
+---
+
+# 🖥️ The VERTEX Dashboard (React Frontend)
+
+The project ships with a product-grade dashboard (`frontend/`, React + Vite) served by the API at
+`http://127.0.0.1:8000`. The design language is **obsidian black + titanium/silver** — no other
+accent colors.
+
+**The graph is the hero.** A 3D force-directed rendering of the actual heterogeneous graph
+(1,000 wallet accounts + protocol nodes) is interactive on the Dashboard:
+
+* drag to **rotate**, scroll to **zoom**
+* **circles** = wallet accounts (dark titanium = low risk, bright platinum = high risk)
+* **diamonds** = DeFi protocols
+* click any account node to open the **full inspection modal** (plain-English explanation,
+  reason bars, SHAP attribution, complete feature table)
+* when you navigate to any other section, the same graph recedes into a translucent,
+  slowly rotating background
+
+**Sections**
+
+| Section | What it shows |
+|---|---|
+| Dashboard | The 3D credit graph + minimal live stats + risk filters |
+| Credit Risk | Run a risk assessment on any account — verdict, plain-English narrative, SHAP chart |
+| XAI Explanation | Per-account Kernel SHAP explorer + global permutation importance |
+| Model Performance | All models compared on an absolute 0–100 scale (100 = perfect baseline): leaderboard, multi-metric bars, accuracy-vs-F1 scatter |
+| Federated Learning | The 5 protocol clients, their account shares, and federated-vs-centralized outputs |
+| System Status | Live backend health + temporal split diagnostics |
+
+**Key API endpoints** (docs at `/docs`): `/api/stats`, `/api/network` (graph for the 3D view),
+`/api/predict`, `/api/accounts/{id}` (includes the plain-English `narrative`),
+`/api/shap/{id}`, `/api/model-performance`.
+
+---
+
+# ▶️ Running the Project
+
+```powershell
+# 1. Python environment (once)
+pip install -r requirements.txt
+
+# 2. Build the frontend (once, and after any frontend change)
+cd frontend
+npm install
+npm run build
+cd ..
+
+# 3. Start the API (serves the dashboard at /)
+python -m uvicorn backend.api.main:app --host 127.0.0.1 --port 8000
+```
+
+Then open **http://127.0.0.1:8000**.
+
+Development mode (hot reload): terminal 1 → `python -m uvicorn backend.api.main:app --port 8000`;
+terminal 2 → `cd frontend; npm run dev` → use http://localhost:5173 (proxies `/api`).
+
+## Full pipeline & experiments
+
+```powershell
+python -m backend.database.reset_db
+python -m backend.blockchain.generate_data
+python -m backend.features.account_features
+python -m backend.database.export_dataset
+python -m backend.features.risk_labels
+python -m backend.graph.build_graph
+python -m backend.model.train_all_models      # 3-class GNNs
+python -m backend.model.train_binary          # binary (production task)
+python -m backend.explainability.explain_model
+python -m backend.explainability.shap_explainer
+python -m backend.federated.federated_train
+python -m backend.evaluation.compare_models
+python -m backend.privacy.secure_aggregation
+python -m backend.visualization.model_comparison   # + feature_plots, risk_distribution
+```

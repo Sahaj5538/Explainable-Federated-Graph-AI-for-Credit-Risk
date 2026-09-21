@@ -84,6 +84,7 @@ class AccountDetail(BaseModel):
     high_risk_probability: float
     reasons: List[Reason]
     features: List[FeatureValue]
+    narrative: Optional[NarrativeBlock] = None
 
 
 class PredictResponse(BaseModel):
@@ -150,6 +151,29 @@ class ImportanceResponse(BaseModel):
 
     baseline_macro_f1: float
     features: List[ImportanceItem]
+
+
+class NetworkAccount(BaseModel):
+
+    id: int
+    risk: str
+    probability: float
+    client: str
+
+
+class NetworkResponse(BaseModel):
+
+    accounts: List[NetworkAccount]
+    protocols: List[str]
+    account_links: List[List[int]]
+    protocol_links: List[List[int]]
+    transactions_count: int
+
+
+class NarrativeBlock(BaseModel):
+
+    headline: str
+    paragraphs: List[str]
 
 
 class ShapFeature(BaseModel):

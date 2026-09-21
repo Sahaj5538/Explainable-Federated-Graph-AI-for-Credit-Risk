@@ -1,254 +1,209 @@
 import React, { useEffect, useState } from 'react'
-import { Trophy, BarChart3, HelpCircle, Layers, Cpu, ShieldCheck, Zap, RefreshCw, Database } from 'lucide-react'
-import { api, pct } from '../api.js'
+import { BarChart3, Award, ScatterChart } from 'lucide-react'
+import { api } from '../api.js'
+
+// ---------------------------------------------------------------------------
+// MODEL PERFORMANCE - every chart on an ABSOLUTE 0-100 scale.
+// 100 is the perfect baseline drawn as a dashed reference line - models are
+// never compared against the best model in the set.
+//
+// Three visualizations:
+//   1. Accuracy leaderboard (horizontal bars, 0-100 + baseline line)
+//   2. Multi-metric grouped bars (accuracy / macro F1 / high-risk recall)
+//   3. Accuracy vs Macro-F1 scatter (point size = high-risk recall)
+// ---------------------------------------------------------------------------
+
+const SILVER = '#C9D2D9'
+const DIM = '#5A6672'
+const BRIGHT = '#F2F6F9'
 
 export default function ModelComparisonView() {
   const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [selectedMetric, setSelectedMetric] = useState('macro_f1')
-
-  const fetchMetrics = () => {
-    setLoading(true)
-    setError(null)
-    api.modelPerformance()
-      .then((res) => {
-        setData(res)
-        setLoading(false)
-      })
-      .catch((err) => {
-        setError(err.message)
-        setLoading(false)
-      })
-  }
 
   useEffect(() => {
-    fetchMetrics()
+    api.modelPerformance().then(setData).catch((e) => setError(e.message))
   }, [])
 
-  if (loading) {
-    return (
-      <div className="loading-state">
-        <div className="spinner-ring" />
-        <span>Loading model evaluation results from backend pipeline...</span>
-      </div>
-    )
-  }
+  if (error) return <div className="error">Could not load model metrics: {error}</div>
+  if (!data) return <div className="loading-state"><div className="spinner-ring" /><span>Loading evaluation metrics…</span></div>
 
-  if (error || !data) {
-    return (
-      <div className="section-stack">
-        <div className="titanium-card">
-          <div className="card-header-title" style={{ marginBottom: 12, color: 'var(--risk-high)' }}>
-            Model Performance Engine Unavailable
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-            Unable to retrieve evaluation results from the backend evaluation pipeline: {error || 'No response'}
-          </p>
-          <button className="btn btn-primary" onClick={fetchMetrics}>
-            <RefreshCw size={14} /> Retry Connecting to Evaluation Pipeline
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const models = [...data.models].sort((a, b) => b.accuracy - a.accuracy)
+  const best = data.best_model
 
-  const models = data.models || []
-  const bestModelName = data.best_model || 'GraphSAGE'
-  const winner = models.find((m) => m.name === bestModelName) || models[0]
+  const W = 760
+  const rowH = 42
+  const H = models.length * rowH + 40
+  const labelW = 190
+  const chartW = W - labelW - 70
 
-  const metricsConfig = [
-    { id: 'macro_f1', label: 'Macro F1 Score', desc: 'Balanced metric across Low and High risk classes.' },
-    { id: 'accuracy', label: 'Test Accuracy', desc: 'Overall percentage of correct risk predictions.' },
-    { id: 'positive_recall', label: 'HIGH RISK Recall', desc: 'Percentage of actual liquidation accounts correctly detected.' },
-    { id: 'positive_f1', label: 'HIGH RISK F1', desc: 'F1 harmonic score specifically on the HIGH RISK class.' },
-  ]
+  // ---- grouped bars geometry ----
+  const gW = 760
+  const gH = 300
+  const plotW = gW - 60
+  const plotH = gH - 50
+  const groupW = plotW / models.length
+  const barW = Math.min(22, (groupW - 14) / 3)
+
+  // ---- scatter geometry ----
+  const sW = 760
+  const sH = 340
+  const scPlotW = sW - 70
+  const scPlotH = sH - 60
+
+  const sc = (v) => 40 + (v / 100) * scPlotW
+  const sy = (v) => 20 + (1 - v / 100) * scPlotH
 
   return (
     <div className="section-stack">
-      {/* Top Banner & Dynamic Winner Identification */}
-      <div className="titanium-card" style={{ border: '1px solid rgba(32, 201, 151, 0.4)', background: 'linear-gradient(135deg, rgba(32, 201, 151, 0.08), rgba(23, 28, 33, 0.95))' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', backgroundColor: 'var(--accent-emerald-glow)', border: '1px solid var(--accent-emerald)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-emerald)' }}>
-              <Trophy size={26} style={{ margin: 'auto' }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent-emerald)', marginBottom: 2 }}>
-                Top Performing Model Architecture
-              </div>
-              <h3 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {winner?.name} ({winner?.category})
-              </h3>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-                Dynamically calculated from backend evaluation checkpoints on held-out test split.
-              </p>
-            </div>
-          </div>
-
-          {winner && (
-            <div style={{ display: 'flex', gap: 16 }}>
-              <div style={{ textAlign: 'center', padding: '10px 18px', backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Test Accuracy</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-emerald)' }}>{pct(winner.accuracy)}</div>
-              </div>
-              <div style={{ textAlign: 'center', padding: '10px 18px', backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Macro F1</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-emerald)' }}>{pct(winner.macro_f1)}</div>
-              </div>
-            </div>
-          )}
+      {/* note */}
+      <div className="titanium-card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <BarChart3 size={18} className="text-silver" />
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+          All metrics are plotted on an absolute <strong style={{ color: 'var(--text-primary)' }}>0–100 scale</strong> —
+          the dashed line marks <strong style={{ color: 'var(--text-primary)' }}>100 (perfect baseline)</strong>, not the
+          best model in the set. Best model: <strong style={{ color: 'var(--text-primary)' }}>{best}</strong>
         </div>
       </div>
 
-      {/* Interactive Metric Switcher & Horizontal Bar Chart */}
+      {/* 1. Accuracy leaderboard */}
+      <div className="titanium-card">
+        <div className="card-header">
+          <div className="card-header-title">
+            <Award className="card-header-icon" size={18} />
+            <span>Test Accuracy Leaderboard (0–100)</span>
+          </div>
+        </div>
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ maxWidth: W }}>
+          {/* baseline gridlines at 0/25/50/75/100 */}
+          {[0, 25, 50, 75, 100].map((v) => {
+            const x = labelW + (v / 100) * chartW
+            return (
+              <g key={v}>
+                <line
+                  x1={x} x2={x} y1={14} y2={H - 24}
+                  stroke={v === 100 ? '#C9D2D9' : 'rgba(255,255,255,0.07)'}
+                  strokeDasharray={v === 100 ? '5 4' : undefined}
+                  strokeWidth={v === 100 ? 1.2 : 1}
+                />
+                <text x={x} y={H - 8} fill="#616B74" fontSize={10} textAnchor="middle" className="mono">
+                  {v}
+                </text>
+              </g>
+            )
+          })}
+          {models.map((m, i) => {
+            const y = 20 + i * rowH
+            const w = (m.accuracy * 100 / 100) * chartW
+            const isBest = m.name === best
+            return (
+              <g key={m.name}>
+                <text x={labelW - 10} y={y + 13} fill={isBest ? BRIGHT : '#929CA3'} fontSize={11.5} textAnchor="end">
+                  {m.name}{isBest ? ' ★' : ''}
+                </text>
+                <rect x={labelW} y={y} width={Math.max(w, 1)} height={18} rx={3}
+                  fill={isBest ? BRIGHT : SILVER} opacity={isBest ? 0.95 : 0.55} />
+                <text x={labelW + Math.max(w, 1) + 8} y={y + 13} fill="#E9EEF1" fontSize={11} className="mono">
+                  {(m.accuracy * 100).toFixed(1)}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+
+      {/* 2. Multi-metric grouped bars */}
       <div className="titanium-card">
         <div className="card-header">
           <div className="card-header-title">
             <BarChart3 className="card-header-icon" size={18} />
-            <span>Model Performance — Comparison of traditional machine learning and graph neural network approaches</span>
+            <span>Multi-Metric Comparison (0–100)</span>
           </div>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {metricsConfig.map((m) => (
-              <button
-                key={m.id}
-                className={`btn btn-sm ${selectedMetric === m.id ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setSelectedMetric(m.id)}
-              >
-                {m.label}
-              </button>
-            ))}
+          <div className="chart-legend">
+            <span className="legend-swatch" style={{ background: BRIGHT }} /> accuracy
+            <span className="legend-swatch" style={{ background: SILVER }} /> macro F1
+            <span className="legend-swatch" style={{ background: DIM }} /> high-risk recall
           </div>
         </div>
-
-        <div className="bar-chart-stack" style={{ marginTop: 16 }}>
-          {models.map((m) => {
-            const val = m[selectedMetric]
-            const isGNN = m.category === 'GNN'
-            const isWinner = m.name === bestModelName
-
-            if (val === null || val === undefined) return null
-
-            const maxVal = Math.max(...models.map((x) => x[selectedMetric] || 0), 0.01)
-            const widthPct = (100 * val) / maxVal
-
+        <svg width="100%" viewBox={`0 0 ${gW} ${gH}`} style={{ maxWidth: gW }}>
+          {[0, 25, 50, 75, 100].map((v) => {
+            const y = 20 + (1 - v / 100) * plotH
             return (
-              <div className="bar-row-grid" key={m.name}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="bar-row-label" style={{ fontWeight: isWinner ? 600 : 400, color: isWinner ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                    {m.name}
-                  </span>
-                  <span style={{ fontSize: 9.5, padding: '1px 5px', borderRadius: 3, backgroundColor: isGNN ? 'rgba(32, 201, 151, 0.12)' : 'rgba(255, 255, 255, 0.06)', color: isGNN ? 'var(--accent-emerald)' : 'var(--text-tertiary)' }}>
-                    {m.category}
-                  </span>
-                </div>
-
-                <div className="bar-track-bg">
-                  <div
-                    className={isGNN ? 'bar-fill-emerald' : 'bar-fill-gold'}
-                    style={{ width: `${widthPct}%` }}
-                  />
-                </div>
-
-                <span className="bar-row-val" style={{ fontWeight: 600 }}>{pct(val)}</span>
-              </div>
+              <g key={v}>
+                <line x1={40} x2={40 + plotW} y1={y} y2={y}
+                  stroke={v === 100 ? '#C9D2D9' : 'rgba(255,255,255,0.07)'}
+                  strokeDasharray={v === 100 ? '5 4' : undefined} strokeWidth={v === 100 ? 1.2 : 1} />
+                <text x={32} y={y + 3} fill="#616B74" fontSize={10} textAnchor="end" className="mono">{v}</text>
+              </g>
             )
           })}
-        </div>
+          {models.map((m, i) => {
+            const gx = 40 + i * groupW + groupW / 2
+            const metrics = [
+              [m.accuracy, BRIGHT],
+              [m.macro_f1, SILVER],
+              [m.positive_recall != null ? m.positive_recall : 0, DIM],
+            ]
+            return (
+              <g key={m.name}>
+                {metrics.map(([val, color], k) => {
+                  const h = (val / 100) * plotH
+                  const x = gx - (barW * 3 + 8) / 2 + k * (barW + 4)
+                  return (
+                    <g key={k}>
+                      <rect x={x} y={20 + plotH - h} width={barW} height={Math.max(h, 1)} rx={2} fill={color} opacity={0.85} />
+                      {k === 0 && (
+                        <text x={x + barW / 2} y={20 + plotH - h - 5} fill="#929CA3" fontSize={9} textAnchor="middle" className="mono">
+                          {(val * 100).toFixed(0)}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })}
+                <text x={gx} y={gH - 12} fill="#929CA3" fontSize={10} textAnchor="middle">
+                  {m.name.length > 16 ? m.name.slice(0, 15) + '…' : m.name}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
       </div>
 
-      {/* Model Benchmark Data Table */}
+      {/* 3. Scatter: accuracy vs macro F1 */}
       <div className="titanium-card">
         <div className="card-header">
           <div className="card-header-title">
-            <Layers className="card-header-icon" size={18} />
-            <span>Evaluated Model Metrics Table (Backend Checkpoints)</span>
+            <ScatterChart className="card-header-icon" size={18} />
+            <span>Accuracy vs Macro F1 (point size = high-risk recall)</span>
           </div>
         </div>
-
-        <div className="table-container">
-          <table className="vertex-table">
-            <thead>
-              <tr>
-                <th>Model Architecture</th>
-                <th>Category</th>
-                <th>Accuracy</th>
-                <th>Macro F1</th>
-                <th>HIGH RISK Recall</th>
-                <th>HIGH RISK F1</th>
-              </tr>
-            </thead>
-            <tbody>
-              {models.map((m) => (
-                <tr key={m.name} style={{ backgroundColor: m.name === bestModelName ? 'rgba(32, 201, 151, 0.04)' : 'transparent' }}>
-                  <td style={{ fontWeight: m.name === bestModelName ? 600 : 400 }}>
-                    {m.name} {m.name === bestModelName ? '★' : ''}
-                  </td>
-                  <td>
-                    <span className="risk-badge low" style={{ fontSize: 10, backgroundColor: m.category === 'GNN' ? 'rgba(32, 201, 151, 0.1)' : 'rgba(214, 168, 79, 0.1)', color: m.category === 'GNN' ? 'var(--accent-emerald)' : 'var(--accent-gold)' }}>
-                      {m.category}
-                    </span>
-                  </td>
-                  <td className="mono" style={{ fontWeight: 600 }}>{pct(m.accuracy)}</td>
-                  <td className="mono" style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>{pct(m.macro_f1)}</td>
-                  <td className="mono">{m.positive_recall !== null ? pct(m.positive_recall) : 'N/A'}</td>
-                  <td className="mono">{m.positive_f1 !== null ? pct(m.positive_f1) : 'N/A'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Non-Technical Metric Glossary */}
-      <div className="titanium-card">
-        <div className="card-header">
-          <div className="card-header-title">
-            <HelpCircle className="card-header-icon" size={18} />
-            <span>Non-Technical Metric Glossary</span>
-          </div>
-        </div>
-
-        <div className="grid-4">
-          <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 6 }}>Accuracy</h4>
-            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              "How often the model makes the correct overall prediction across all accounts."
-            </p>
-          </div>
-
-          <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 6 }}>Precision</h4>
-            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              "When the model predicts high risk, how often is it actually correct?"
-            </p>
-          </div>
-
-          <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 6 }}>Recall</h4>
-            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              "How many of the actual high-risk wallets did the model detect?"
-            </p>
-          </div>
-
-          <div style={{ padding: 16, backgroundColor: 'var(--obsidian-deep)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: 6 }}>F1 Score</h4>
-            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              "A balance between precision and recall."
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Data Provenance & Pipeline Source */}
-      <div className="titanium-card">
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <Database size={20} className="text-emerald" />
-          <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            <strong style={{ color: 'var(--text-primary)' }}>Data Provenance:</strong> Evaluation results generated dynamically by the VERTEX model evaluation pipeline (`backend.evaluation.compare_models`) from saved PyTorch checkpoints in `backend/model/saved_models/`. Test set: 152 held-out account nodes.
-          </div>
-        </div>
+        <svg width="100%" viewBox={`0 0 ${sW} ${sH}`} style={{ maxWidth: sW }}>
+          {[0, 25, 50, 75, 100].map((v) => (
+            <g key={v}>
+              <line x1={sc(v)} x2={sc(v)} y1={20} y2={20 + scPlotH} stroke="rgba(255,255,255,0.05)" />
+              <line x1={40} x2={40 + scPlotW} y1={sy(v)} y2={sy(v)} stroke="rgba(255,255,255,0.05)" />
+              <text x={sc(v)} y={sH - 18} fill="#616B74" fontSize={10} textAnchor="middle" className="mono">{v}</text>
+              <text x={32} y={sy(v) + 3} fill="#616B74" fontSize={10} textAnchor="end" className="mono">{v}</text>
+            </g>
+          ))}
+          <text x={sW / 2} y={sH - 2} fill="#616B74" fontSize={10} textAnchor="middle">accuracy (%)</text>
+          <text x={10} y={sH / 2} fill="#616B74" fontSize={10} textAnchor="middle"
+            transform={`rotate(-90 10 ${sH / 2})`}>macro F1 (%)</text>
+          {models.map((m) => {
+            const r = 5 + (m.positive_recall != null ? m.positive_recall : 0) * 9
+            const isBest = m.name === best
+            return (
+              <g key={m.name}>
+                <circle cx={sc(m.accuracy * 100)} cy={sy(m.macro_f1 * 100)} r={r}
+                  fill={isBest ? BRIGHT : SILVER} opacity={isBest ? 0.9 : 0.55} stroke="#080A0C" strokeWidth={1.5} />
+                <text x={sc(m.accuracy * 100) + r + 5} y={sy(m.macro_f1 * 100) + 3}
+                  fill={isBest ? BRIGHT : '#929CA3'} fontSize={10}>
+                  {m.name}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
       </div>
     </div>
   )

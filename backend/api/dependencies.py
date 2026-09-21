@@ -230,6 +230,8 @@ def _startup():
         {
             "ready": True,
             "account_features": account_features,
+            "protocols": protocols,
+            "transactions_count": len(transactions),
             "labels": labels,
             "x_dict": x_dict,
             "edge_index_dict": edge_index_dict,

@@ -34,6 +34,8 @@ from backend.api.schemas import (
     ReasonChip,
     ShapFeature,
     ShapResponse,
+    NetworkResponse,
+    NarrativeBlock,
     StatsResponse,
     ModelMetricItem,
     ModelPerformanceResponse,
@@ -434,7 +436,7 @@ def account_detail(account_id: int):
         for feature in NODE_FEATURE_COLUMNS
     ]
 
-    return AccountDetail(
+    detail = AccountDetail(
         account_id=account_id,
         wallet=STATE["wallet_map"].get(
             account_id,
@@ -456,6 +458,187 @@ def account_detail(account_id: int):
         reasons=explanation["reasons"],
         features=features,
     )
+
+    narrative = _build_narrative(index, detail)
+
+    detail.narrative = NarrativeBlock(**narrative)
+
+    return detail
+
+
+# ============================================================
+# PLAIN-ENGLISH NARRATIVE (credit risk explanation)
+# ============================================================
+
+FEATURE_PHRASES = {
+    "historical_liquidation_count": "the number of past liquidations",
+    "borrow_frequency": "how often the wallet borrows",
+    "borrow_volume": "the total volume borrowed",
+    "liquidation_rate": "the share of borrow positions that ended in liquidation",
+    "borrow_intensity": "borrowing intensity relative to activity",
+    "unique_counterparties": "the number of distinct counterparties",
+    "deposit_volume": "the total volume deposited",
+    "borrow_to_repay_ratio": "the borrow-to-repay ratio",
+    "repayment_ratio": "the fraction of borrowed value repaid",
+    "repay_count": "the number of repayments made",
+    "total_volume": "the total transaction volume",
+    "failed_tx_ratio": "the share of transactions that failed",
+    "failed_transactions": "the number of failed transactions",
+}
+
+
+def _phrase(feature):
+    return FEATURE_PHRASES.get(feature, feature.replace("_", " "))
+
+
+def _build_narrative(index, detail):
+
+    high = detail.prediction == "HIGH RISK"
+
+    probability = detail.high_risk_probability
+
+    headline = (
+        f"Account #{detail.account_id} is classified "
+        f"{'HIGH RISK' if high else 'LOW RISK'}: the model estimates a "
+        f"{probability * 100:.1f}% probability of at least one "
+        "liquidation during the 60-day outcome window."
+    )
+
+    paragraphs = []
+
+    reasons = sorted(
+        detail.reasons,
+        key=lambda r: r.reason_score,
+        reverse=True,
+    )
+
+    if reasons:
+
+        top = reasons[0]
+
+        paragraphs.append(
+            f"The dominant driver is {_phrase(top.feature)}: this wallet "
+            f"records a value of {top.value:.4g}, which is "
+            f"{abs(top.z_vs_low_risk):.1f} standard deviations "
+            f"{'above' if top.z_vs_low_risk >= 0 else 'below'} "
+            "the typical low-risk account - this is the single "
+            "strongest signal behind the score."
+        )
+
+        others = [
+            r
+            for r in reasons[1:4]
+            if r.z_vs_low_risk >= 0.5
+        ]
+
+        if others:
+
+            parts = ", ".join(
+                f"{_phrase(r.feature)} "
+                f"(z = {r.z_vs_low_risk:+.1f})"
+                for r in others
+            )
+
+            paragraphs.append(
+                "Further pressure comes from " + parts + "."
+            )
+
+        protective = [
+            r
+            for r in reasons
+            if r.z_vs_low_risk <= -0.5
+        ]
+
+        if protective:
+
+            best = protective[0]
+
+            paragraphs.append(
+                f"One factor works in the wallet's favour: "
+                f"{_phrase(best.feature)} is "
+                f"{abs(best.z_vs_low_risk):.1f} standard deviations "
+                "below the low-risk baseline, pulling the risk "
+                "estimate down."
+            )
+
+    # SHAP numbers, if already computed (cached).
+    shap_result = _SHAP_STATE["cache"].get(index)
+
+    if shap_result:
+
+        top_shap = sorted(
+            shap_result["features"],
+            key=lambda f: abs(f["shap_value"]),
+            reverse=True,
+        )[0]
+
+        paragraphs.append(
+            f"Kernel SHAP quantifies the same picture: starting from a "
+            f"typical low-risk baseline of "
+            f"{shap_result['base_value'] * 100:.1f}%, "
+            f"{_phrase(top_shap['feature'])} alone shifts the estimate "
+            f"by {top_shap['shap_value'] * 100:+.1f} percentage points, "
+            "and all contributions sum exactly to the final score."
+        )
+
+    paragraphs.append(
+        "Everything above is computed from observation-window "
+        "behaviour only - the model never sees the outcome window "
+        "it is predicting."
+    )
+
+    return {
+        "headline": headline,
+        "paragraphs": paragraphs,
+    }
+
+
+# ============================================================
+# NETWORK GRAPH (nodes + edges for the 3D visualisation)
+# ============================================================
+
+@router.get(
+    "/network",
+    response_model=NetworkResponse,
+)
+def network():
+
+    account_links = STATE["edge_index_dict"][
+        ("account", "transacts_with", "account")
+    ].t().tolist()
+
+    protocol_links = STATE["edge_index_dict"][
+        ("account", "interacts_with", "protocol")
+    ].t().tolist()
+
+    protocol_names = [
+        str(name).replace("Like", "")
+        for name in STATE["protocols"]["name"].tolist()
+    ]
+
+    predictions = STATE["predictions"]
+
+    probabilities = STATE["high_probabilities"]
+
+    clients = STATE["client_names"]
+
+    accounts = [
+        {
+            "id": int(account_id),
+            "risk": "HIGH" if predictions[i] == 1 else "LOW",
+            "probability": round(float(probabilities[i]), 4),
+            "client": clients[i],
+        }
+        for i, account_id in enumerate(STATE["account_ids"])
+    ]
+
+    return {
+        "accounts": accounts,
+        "protocols": protocol_names,
+        "account_links": account_links,
+        "protocol_links": protocol_links,
+        "transactions_count": STATE["transactions_count"],
+    }
 
 
 # ============================================================

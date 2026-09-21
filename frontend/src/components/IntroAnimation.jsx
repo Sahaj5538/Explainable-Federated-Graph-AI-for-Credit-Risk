@@ -1,12 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react'
 
+// ---------------------------------------------------------------------------
+// VERTEX intro - slowed down (~7 s) and fully titanium/silver.
+// Nodes condense into a natural graph, the wordmark settles in, then the
+// overlay fades and hands over to the live 3D graph.
+// ---------------------------------------------------------------------------
+
 export default function IntroAnimation({ onComplete }) {
   const canvasRef = useRef(null)
   const [stage, setStage] = useState(0)
   const [fadingOut, setFadingOut] = useState(false)
 
   useEffect(() => {
-    // Check session storage to avoid repeating during internal navigation
     if (sessionStorage.getItem('vertex_intro_seen')) {
       onComplete()
       return
@@ -16,12 +21,21 @@ export default function IntroAnimation({ onComplete }) {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     let animationFrameId
-    let startTime = performance.now()
+    const startTime = performance.now()
 
     const width = (canvas.width = window.innerWidth)
     const height = (canvas.height = window.innerHeight)
     const cx = width / 2
     const cy = height / 2 - 30
+
+    // slower timeline (seconds):
+    // 0.0-0.9 black -> 0.9-2.0 nodes appear -> 2.0-3.4 links ->
+    // 3.4-4.6 converge + title -> 4.6-6.4 subtitle -> 6.4-7.0 fade
+    const T_NODES = 0.9
+    const T_LINKS = 2.0
+    const T_CONVERGE = 3.4
+    const T_SUBTITLE = 4.6
+    const T_FADE = 6.4
 
     const numNodes = 40
     const nodes = []
@@ -44,18 +58,17 @@ export default function IntroAnimation({ onComplete }) {
       ctx.fillStyle = '#080A0C'
       ctx.fillRect(0, 0, width, height)
 
-      // Timeline sequence
-      if (elapsed < 0.3) {
-        setStage(0) // Black background
-      } else if (elapsed < 0.7) {
-        setStage(1) // Nodes appear
-      } else if (elapsed < 1.2) {
-        setStage(2) // Lines connect
-      } else if (elapsed < 1.8) {
-        setStage(3) // Converge & Title
-      } else if (elapsed < 2.8) {
-        setStage(4) // Subtitle & Morphing start
-      } else if (elapsed < 3.2) {
+      if (elapsed < T_NODES) {
+        setStage(0)
+      } else if (elapsed < T_LINKS) {
+        setStage(1)
+      } else if (elapsed < T_CONVERGE) {
+        setStage(2)
+      } else if (elapsed < T_SUBTITLE) {
+        setStage(3)
+      } else if (elapsed < T_FADE) {
+        setStage(4)
+      } else if (elapsed < T_FADE + 0.6) {
         setFadingOut(true)
       } else {
         sessionStorage.setItem('vertex_intro_seen', 'true')
@@ -63,8 +76,8 @@ export default function IntroAnimation({ onComplete }) {
         return
       }
 
-      // Draw Connections (Stage 2+)
-      if (elapsed >= 0.7) {
+      // links - all silver/titanium
+      if (elapsed >= T_LINKS) {
         ctx.lineWidth = 0.8
         for (let i = 0; i < numNodes; i++) {
           for (let j = i + 1; j < numNodes; j++) {
@@ -72,8 +85,14 @@ export default function IntroAnimation({ onComplete }) {
             const dy = nodes[i].y - nodes[j].y
             const dist = Math.sqrt(dx * dx + dy * dy)
             if (dist < 130) {
-              const lineAlpha = (1 - dist / 130) * Math.min(1, (elapsed - 0.7) * 2) * 0.45
-              ctx.strokeStyle = i % 3 === 0 ? `rgba(32, 201, 151, ${lineAlpha})` : `rgba(146, 156, 163, ${lineAlpha})`
+              const lineAlpha =
+                (1 - dist / 130) *
+                Math.min(1, (elapsed - T_LINKS) * 1.4) *
+                0.45
+              ctx.strokeStyle =
+                i % 3 === 0
+                  ? `rgba(201, 210, 217, ${lineAlpha})`
+                  : `rgba(146, 156, 163, ${lineAlpha})`
               ctx.beginPath()
               ctx.moveTo(nodes[i].x, nodes[i].y)
               ctx.lineTo(nodes[j].x, nodes[j].y)
@@ -83,18 +102,20 @@ export default function IntroAnimation({ onComplete }) {
         }
       }
 
-      // Draw Nodes (Stage 1+)
-      if (elapsed >= 0.3) {
+      // nodes - silver, with a few bright platinum hubs
+      if (elapsed >= T_NODES) {
         nodes.forEach((node, i) => {
-          node.alpha = Math.min(1, (elapsed - 0.3) * 2)
+          node.alpha = Math.min(1, (elapsed - T_NODES) * 1.4)
 
-          // Convergence physics (Stage 3+)
-          if (elapsed >= 1.2) {
-            node.x += (node.targetX - node.x) * 0.05
-            node.y += (node.targetY - node.y) * 0.05
+          if (elapsed >= T_CONVERGE) {
+            node.x += (node.targetX - node.x) * 0.045
+            node.y += (node.targetY - node.y) * 0.045
           }
 
-          ctx.fillStyle = i % 4 === 0 ? `rgba(32, 201, 151, ${node.alpha})` : `rgba(233, 238, 241, ${node.alpha})`
+          ctx.fillStyle =
+            i % 4 === 0
+              ? `rgba(242, 246, 249, ${node.alpha})`
+              : `rgba(201, 210, 217, ${node.alpha})`
           ctx.beginPath()
           ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2)
           ctx.fill()
@@ -113,7 +134,7 @@ export default function IntroAnimation({ onComplete }) {
       className="intro-overlay"
       style={{
         opacity: fadingOut ? 0 : 1,
-        transition: 'opacity 0.5s ease-out',
+        transition: 'opacity 0.6s ease-out',
         pointerEvents: fadingOut ? 'none' : 'auto',
       }}
     >
@@ -127,18 +148,18 @@ export default function IntroAnimation({ onComplete }) {
           marginTop: 180,
           opacity: stage >= 3 ? 1 : 0,
           transform: stage >= 3 ? 'translateY(0)' : 'translateY(10px)',
-          transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         <h1
           style={{
             fontFamily: 'var(--font-heading)',
-            fontSize: 46,
+            fontSize: 52,
             fontWeight: 700,
-            letterSpacing: '0.22em',
+            letterSpacing: '0.24em',
             color: 'var(--text-primary)',
-            marginBottom: 6,
-            textShadow: '0 0 35px rgba(32, 201, 151, 0.35)',
+            marginBottom: 8,
+            textShadow: '0 0 38px rgba(201, 210, 217, 0.35)',
           }}
         >
           VERTEX
@@ -148,13 +169,13 @@ export default function IntroAnimation({ onComplete }) {
             fontFamily: 'var(--font-heading)',
             fontSize: 15,
             fontWeight: 600,
-            letterSpacing: '0.14em',
-            color: 'var(--accent-emerald)',
+            letterSpacing: '0.16em',
+            color: 'var(--text-silver)',
             textTransform: 'uppercase',
             marginBottom: 20,
           }}
         >
-          GRAPH CREDIT INTELLIGENCE
+          Graph Credit Intelligence
         </p>
         <p
           style={{
@@ -162,7 +183,7 @@ export default function IntroAnimation({ onComplete }) {
             color: 'var(--text-secondary)',
             letterSpacing: '0.06em',
             opacity: stage >= 4 ? 1 : 0,
-            transition: 'opacity 0.5s ease',
+            transition: 'opacity 0.6s ease',
           }}
         >
           Privacy-Preserving AI for DeFi Credit Risk
