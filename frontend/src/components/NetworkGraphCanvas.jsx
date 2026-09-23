@@ -28,12 +28,13 @@ export default function NetworkGraphCanvas({
       .then((data) => {
         const rawAccounts = data.accounts || []
 
-        // Fixed protocols
+        // Fixed protocols - 5 now to match 5 federated clients (Curve Finance aggregator)
         const protocolNodes = [
           { id: 'proto-1', name: 'AaveLike (Lending)', type: 'protocol', x: 0, y: 0, risk: 'LOW' },
           { id: 'proto-2', name: 'CompoundLike (Lending)', type: 'protocol', x: 0, y: 0, risk: 'LOW' },
           { id: 'proto-3', name: 'UniswapLike (DEX)', type: 'protocol', x: 0, y: 0, risk: 'LOW' },
           { id: 'proto-4', name: 'MakerLike (Lending)', type: 'protocol', x: 0, y: 0, risk: 'LOW' },
+          { id: 'proto-5', name: 'Curve Finance (Aggregator)', type: 'protocol', x: 0, y: 0, risk: 'LOW' },
         ]
 
         // Position nodes in radial force layout
@@ -51,23 +52,25 @@ export default function NetworkGraphCanvas({
           }
         })
 
-        // Position protocols near center
-        protocolNodes[0].x = -90
-        protocolNodes[0].y = -90
-        protocolNodes[1].x = 90
-        protocolNodes[1].y = -90
-        protocolNodes[2].x = -90
-        protocolNodes[2].y = 90
-        protocolNodes[3].x = 90
-        protocolNodes[3].y = 90
+        // Position protocols near center - 5 layout
+        protocolNodes[0].x = -110
+        protocolNodes[0].y = -110
+        protocolNodes[1].x = 110
+        protocolNodes[1].y = -110
+        protocolNodes[2].x = -110
+        protocolNodes[2].y = 110
+        protocolNodes[3].x = 110
+        protocolNodes[3].y = 110
+        protocolNodes[4].x = 0
+        protocolNodes[4].y = 0
 
         const allNodes = [...protocolNodes, ...processedNodes]
 
         // Create transaction edges between counterparties and protocols
         const generatedEdges = []
         processedNodes.forEach((node, i) => {
-          // Protocol connection
-          const protoIndex = i % 4
+          // Protocol connection - 5 protocols now
+          const protoIndex = i % 5
           generatedEdges.push({
             source: node.id,
             target: protocolNodes[protoIndex].id,
@@ -325,7 +328,7 @@ export default function NetworkGraphCanvas({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#9277D8', display: 'inline-block' }} />
-          <span>DeFi Protocol</span>
+          <span>DeFi Protocol (5 incl. Curve)</span>
         </div>
       </div>
 

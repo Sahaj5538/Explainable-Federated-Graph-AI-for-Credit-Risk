@@ -132,8 +132,7 @@ export default function GraphStage({
           node.type === 'protocol'
             ? `${node.name} — lending protocol`
             : `Account #${node.accountId} · ${riskBand(node.probability).label} · risk ${pct(node.probability)} · ${node.client}`
-        )
-        .nodeThreeObject((node) => {
+        )        .nodeThreeObject((node) => {
           if (node.type === 'protocol') {
             const group = new THREE.Group()
             group.add(new THREE.Mesh(diamondGeo, diamondMat))
